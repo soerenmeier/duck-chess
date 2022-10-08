@@ -96,7 +96,7 @@ impl Board {
 		dirs: &[Direction],
 		// if only one move can be done (true for king)
 		max_one: bool,
-		list: &mut Vec<Move>
+		list: &mut Vec<PieceMove>
 	) {
 		let dist = if max_one { 1 } else { 8 };
 		let Some(piece) = self.piece_at(from) else {
@@ -126,7 +126,7 @@ impl Board {
 					promotion: None
 				};
 
-				list.push(Move { kind: mv_kind, side: piece.side });
+				list.push(PieceMove { kind: mv_kind, side: piece.side });
 
 				// cannot capture a piece after a capture
 				if capture.is_some() {
@@ -136,7 +136,12 @@ impl Board {
 		}
 	}
 
-	pub fn available_castle_moves(&self, square: Square, list: &mut Vec<Move>) {
+	// the square needs to be the position of the king
+	pub fn available_castle_moves(
+		&self,
+		square: Square,
+		list: &mut Vec<PieceMove>
+	) {
 		const LONG_FREE: &[u8] = &[1, 2, 3];
 		const SHORT_FREE: &[u8] = &[5, 6];
 
@@ -155,10 +160,12 @@ impl Board {
 				.all(|square| self.piece_at(square).is_none());
 
 			if all_free {
-				list.push(Move {
+				list.push(PieceMove {
 					kind: MoveKind::Castle {
-						king: square,
-						rook: Square::from_xy(0, y)
+						from_king: square,
+						to_king: Square::from_xy(2, y),
+						from_rook: Square::from_xy(0, y),
+						to_rook: Square::from_xy(3, y)
 					},
 					side: piece.side
 				});
@@ -171,10 +178,12 @@ impl Board {
 				.all(|square| self.piece_at(square).is_none());
 
 			if all_free {
-				list.push(Move {
+				list.push(PieceMove {
 					kind: MoveKind::Castle {
-						king: square,
-						rook: Square::from_xy(7, y)
+						from_king: square,
+						to_king: Square::from_xy(6, y),
+						from_rook: Square::from_xy(7, y),
+						to_rook: Square::from_xy(5, y)
 					},
 					side: piece.side
 				});
@@ -182,7 +191,7 @@ impl Board {
 		}
 	}
 
-	pub fn available_pawn_moves(&self, square: Square, list: &mut Vec<Move>) {
+	pub fn available_pawn_moves(&self, square: Square, list: &mut Vec<PieceMove>) {
 		const CAN_PROMOTE_TO: &[PieceKind] = &[
 			PieceKind::Rook,
 			PieceKind::Knight,
@@ -216,7 +225,7 @@ impl Board {
 					break
 				}
 
-				list.push(Move {
+				list.push(PieceMove {
 					kind: MoveKind::Piece {
 						piece: piece.kind,
 						from: square,
@@ -234,7 +243,7 @@ impl Board {
 			let promotion_square = square.add_dir(Direction::Up).unwrap();
 			if self.piece_at(promotion_square).is_none() {
 				for promotion_piece in CAN_PROMOTE_TO {
-					list.push(Move {
+					list.push(PieceMove {
 						kind: MoveKind::Piece {
 							piece: piece.kind,
 							from: square,
@@ -259,7 +268,7 @@ impl Board {
 			};
 
 			if Self::can_eat_piece(eat_piece, piece.side) {
-				list.push(Move {
+				list.push(PieceMove {
 					kind: MoveKind::Piece {
 						piece: piece.kind,
 						from: square,
@@ -288,7 +297,7 @@ impl Board {
 				second_rank
 			);
 
-			list.push(Move {
+			list.push(PieceMove {
 				kind: MoveKind::EnPassant {
 					from: square,
 					to: new_square
@@ -298,7 +307,11 @@ impl Board {
 		}
 	}
 
-	pub fn available_knight_moves(&self, square: Square, list: &mut Vec<Move>) {
+	pub fn available_knight_moves(
+		&self,
+		square: Square,
+		list: &mut Vec<PieceMove>
+	) {
 		let Some(piece) = self.piece_at(square) else {
 			panic!("no piece")
 		};
@@ -318,7 +331,7 @@ impl Board {
 				None
 			};
 
-			list.push(Move {
+			list.push(PieceMove {
 				kind: MoveKind::Piece {
 					piece: piece.kind,
 					from: square,
@@ -335,7 +348,7 @@ impl Board {
 		&self,
 		piece: PieceKind,
 		square: Square,
-		list: &mut Vec<Move>
+		list: &mut Vec<PieceMove>
 	) {
 		match piece {
 			PieceKind::Rook |
@@ -421,6 +434,12 @@ pub enum Side {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move {
+	pub piece: PieceMove,
+	pub duck: Square
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PieceMove {
 	pub kind: MoveKind,
 	pub side: Side
 }
@@ -439,8 +458,10 @@ pub enum MoveKind {
 		to: Square
 	},
 	Castle {
-		king: Square,
-		rook: Square
+		from_king: Square,
+		to_king: Square,
+		from_rook: Square,
+		to_rook: Square
 	}
 }
 

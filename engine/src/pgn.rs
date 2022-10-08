@@ -14,12 +14,12 @@ pub enum Error {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PgnMove {
-	pub piece: PieceMove,
+	pub piece: PgnPieceMove,
 	pub duck: Square
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PieceMove {
+pub enum PgnPieceMove {
 	Piece {
 		piece: PieceKind,
 		from: Option<Square>,
@@ -98,12 +98,12 @@ where I: ParseIterator<'a> {
 
 	if bytes == b"O-O" {
 		return Ok(Some(PgnMove {
-			piece: PieceMove::Castle { long: false },
+			piece: PgnPieceMove::Castle { long: false },
 			duck
 		}))
 	} else if bytes == b"O-O-O" {
 		return Ok(Some(PgnMove {
-			piece: PieceMove::Castle { long: true },
+			piece: PgnPieceMove::Castle { long: true },
 			duck
 		}))
 	}
@@ -145,7 +145,7 @@ where I: ParseIterator<'a> {
 	}
 
 	Ok(Some(PgnMove {
-		piece: PieceMove::Piece { piece, from, to, capture },
+		piece: PgnPieceMove::Piece { piece, from, to, capture },
 		duck
 	}))
 }
@@ -183,7 +183,7 @@ mod tests {
 
 		let correct_moves = vec![
 			PgnMove {
-				piece: PieceMove::Piece {
+				piece: PgnPieceMove::Piece {
 					piece: PieceKind::Pawn,
 					from: None,
 					to: Square::E2,
@@ -192,7 +192,7 @@ mod tests {
 				duck: Square::E4
 			},
 			PgnMove {
-				piece: PieceMove::Piece {
+				piece: PgnPieceMove::Piece {
 					piece: PieceKind::Pawn,
 					from: None,
 					to: Square::D7,
@@ -201,7 +201,7 @@ mod tests {
 				duck: Square::D6
 			},
 			PgnMove {
-				piece: PieceMove::Piece {
+				piece: PgnPieceMove::Piece {
 					piece: PieceKind::Knight,
 					from: None,
 					to: Square::B1,
