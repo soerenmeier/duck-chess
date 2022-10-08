@@ -1,0 +1,57 @@
+
+:root {
+	--white: #fff;
+	--black: #424242;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	font-family: inherit;
+	font-size: inherit;
+	font-weight: inherit;
+	color: inherit;
+}
+
+body {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	font-family: 'Open Sans', Arial, sans-serif;
+	font-size: 17px;
+	overflow: hidden;
+	color: var(--black);
+}
+
+fieldset {
+	display: flex;
+	flex-flow: column;
+	border: none;
+	padding: 0;
+}
+
+input, textarea, button {
+	display: block;
+	padding: 5px 10px;
+	margin-top: 10px;
+	border: 1px solid var(--black);
+}
+
+button {
+	cursor: pointer;
+	background-color: var(--white);
+	transition: background-color .2s ease, color 0.2s ease;
+}
+
+button:hover {
+	background-color: var(--black);
+	color: var(--white);
+}
+
+.multiple-btns {
+	display: flex;
+}
+
+.multiple-btns *:not(:last-child) {
+	border-right: none;
+}
