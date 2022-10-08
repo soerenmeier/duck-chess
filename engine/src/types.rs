@@ -1,14 +1,22 @@
 
 use std::mem;
 
-#[derive(Debug, Clone)]
+use serde::{Serialize, Deserialize};
+use serde_big_array::BigArray;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Board {
+	#[serde(with = "BigArray")]
 	pub board: [Option<Piece>; 64],
 	// white, black
 	pub can_castle: CanCastle,
 	// if the last move was a pawn with two pushes store that position here
 	pub en_passant: Option<Square>,
-	pub next_move: Side
+	pub next_move: Side,
+	// if this is true the duck should be moved
+	// and then the side should change
+	pub moved_piece: bool
 }
 
 // Board
@@ -41,7 +49,8 @@ impl Board {
 			board: [None; 64],
 			can_castle: CanCastle { white: (true, true), black: (true, true) },
 			en_passant: None,
-			next_move: Side::White
+			next_move: Side::White,
+			moved_piece: false
 		}
 	}
 
@@ -62,6 +71,7 @@ impl Board {
 		};
 		self.en_passant = None;
 		self.next_move = Side::White;
+		self.moved_piece = false;
 	}
 
 	pub fn piece_at(&self, square: Square) -> Option<Piece> {
@@ -119,14 +129,12 @@ impl Board {
 					break
 				}
 
-				let mv_kind = MoveKind::Piece {
+				list.push(PieceMove::Piece {
 					piece: piece.kind,
 					from, to,
 					capture,
 					promotion: None
-				};
-
-				list.push(PieceMove { kind: mv_kind, side: piece.side });
+				});
 
 				// cannot capture a piece after a capture
 				if capture.is_some() {
@@ -137,7 +145,7 @@ impl Board {
 	}
 
 	// the square needs to be the position of the king
-	pub fn available_castle_moves(
+	fn available_castle_moves(
 		&self,
 		square: Square,
 		list: &mut Vec<PieceMove>
@@ -160,14 +168,11 @@ impl Board {
 				.all(|square| self.piece_at(square).is_none());
 
 			if all_free {
-				list.push(PieceMove {
-					kind: MoveKind::Castle {
-						from_king: square,
-						to_king: Square::from_xy(2, y),
-						from_rook: Square::from_xy(0, y),
-						to_rook: Square::from_xy(3, y)
-					},
-					side: piece.side
+				list.push(PieceMove::Castle {
+					from_king: square,
+					to_king: Square::from_xy(2, y),
+					from_rook: Square::from_xy(0, y),
+					to_rook: Square::from_xy(3, y)
 				});
 			}
 		}
@@ -178,20 +183,17 @@ impl Board {
 				.all(|square| self.piece_at(square).is_none());
 
 			if all_free {
-				list.push(PieceMove {
-					kind: MoveKind::Castle {
-						from_king: square,
-						to_king: Square::from_xy(6, y),
-						from_rook: Square::from_xy(7, y),
-						to_rook: Square::from_xy(5, y)
-					},
-					side: piece.side
+				list.push(PieceMove::Castle {
+					from_king: square,
+					to_king: Square::from_xy(6, y),
+					from_rook: Square::from_xy(7, y),
+					to_rook: Square::from_xy(5, y)
 				});
 			}
 		}
 	}
 
-	pub fn available_pawn_moves(&self, square: Square, list: &mut Vec<PieceMove>) {
+	fn available_pawn_moves(&self, square: Square, list: &mut Vec<PieceMove>) {
 		const CAN_PROMOTE_TO: &[PieceKind] = &[
 			PieceKind::Rook,
 			PieceKind::Knight,
@@ -225,15 +227,12 @@ impl Board {
 					break
 				}
 
-				list.push(PieceMove {
-					kind: MoveKind::Piece {
-						piece: piece.kind,
-						from: square,
-						to: up_square,
-						capture: None,
-						promotion: None
-					},
-					side: piece.side
+				list.push(PieceMove::Piece {
+					piece: piece.kind,
+					from: square,
+					to: up_square,
+					capture: None,
+					promotion: None
 				});
 			}
 		}
@@ -243,15 +242,12 @@ impl Board {
 			let promotion_square = square.add_dir(Direction::Up).unwrap();
 			if self.piece_at(promotion_square).is_none() {
 				for promotion_piece in CAN_PROMOTE_TO {
-					list.push(PieceMove {
-						kind: MoveKind::Piece {
-							piece: piece.kind,
-							from: square,
-							to: promotion_square,
-							capture: None,
-							promotion: Some(*promotion_piece)
-						},
-						side: piece.side
+					list.push(PieceMove::Piece {
+						piece: piece.kind,
+						from: square,
+						to: promotion_square,
+						capture: None,
+						promotion: Some(*promotion_piece)
 					});
 				}
 			}
@@ -268,15 +264,12 @@ impl Board {
 			};
 
 			if Self::can_eat_piece(eat_piece, piece.side) {
-				list.push(PieceMove {
-					kind: MoveKind::Piece {
-						piece: piece.kind,
-						from: square,
-						to: new_square,
-						capture: Some(eat_piece.kind),
-						promotion: None
-					},
-					side: piece.side
+				list.push(PieceMove::Piece {
+					piece: piece.kind,
+					from: square,
+					to: new_square,
+					capture: Some(eat_piece.kind),
+					promotion: None
 				});
 			}
 		}
@@ -297,17 +290,14 @@ impl Board {
 				second_rank
 			);
 
-			list.push(PieceMove {
-				kind: MoveKind::EnPassant {
-					from: square,
-					to: new_square
-				},
-				side: piece.side
+			list.push(PieceMove::EnPassant {
+				from: square,
+				to: new_square
 			});
 		}
 	}
 
-	pub fn available_knight_moves(
+	fn available_knight_moves(
 		&self,
 		square: Square,
 		list: &mut Vec<PieceMove>
@@ -331,15 +321,12 @@ impl Board {
 				None
 			};
 
-			list.push(PieceMove {
-				kind: MoveKind::Piece {
-					piece: piece.kind,
-					from: square,
-					to: new_square,
-					capture,
-					promotion: None
-				},
-				side: piece.side
+			list.push(PieceMove::Piece {
+				piece: piece.kind,
+				from: square,
+				to: new_square,
+				capture,
+				promotion: None
 			});
 		}
 	}
@@ -350,6 +337,8 @@ impl Board {
 		square: Square,
 		list: &mut Vec<PieceMove>
 	) {
+		assert!(!self.moved_piece);
+
 		match piece {
 			PieceKind::Rook |
 			PieceKind::Bishop |
@@ -380,15 +369,26 @@ impl Board {
 			PieceKind::Duck => unreachable!()
 		}
 	}
+
+	pub fn available_duck_squares(&self, list: &mut Vec<Square>) {
+		assert!(self.moved_piece);
+
+		for (i, piece) in self.board.iter().enumerate() {
+			if piece.is_none() {
+				list.push(Square::from_u8(i as u8));
+			}
+		}
+	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Piece {
 	pub kind: PieceKind,
 	pub side: Side
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PieceKind {
 	Rook,
 	Knight,
@@ -419,33 +419,30 @@ impl PieceKind {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CanCastle {
 	// long, short
 	pub white: (bool, bool),
 	pub black: (bool, bool)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Side {
 	White,
 	Black
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Move {
 	pub piece: PieceMove,
-	pub duck: Square
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct PieceMove {
-	pub kind: MoveKind,
+	pub duck: Square,
 	pub side: Side
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MoveKind {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PieceMove {
 	Piece {
 		piece: PieceKind,
 		from: Square,
@@ -458,24 +455,28 @@ pub enum MoveKind {
 		to: Square
 	},
 	Castle {
+		#[serde(rename = "fromKing")]
 		from_king: Square,
+		#[serde(rename = "toKing")]
 		to_king: Square,
+		#[serde(rename = "fromRook")]
 		from_rook: Square,
+		#[serde(rename = "toRook")]
 		to_rook: Square
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum Square {
-    A8 = 0, B8, C8, D8, E8, F8, G8, H8,
-    A7, B7, C7, D7, E7, F7, G7, H7,
-    A6, B6, C6, D6, E6, F6, G6, H6,
-    A5, B5, C5, D5, E5, F5, G5, H5,
-    A4, B4, C4, D4, E4, F4, G4, H4,
-    A3, B3, C3, D3, E3, F3, G3, H3,
-    A2, B2, C2, D2, E2, F2, G2, H2,
-    A1, B1, C1, D1, E1, F1, G1, H1,
+	A8 = 0, B8, C8, D8, E8, F8, G8, H8,
+	A7, B7, C7, D7, E7, F7, G7, H7,
+	A6, B6, C6, D6, E6, F6, G6, H6,
+	A5, B5, C5, D5, E5, F5, G5, H5,
+	A4, B4, C4, D4, E4, F4, G4, H4,
+	A3, B3, C3, D3, E3, F3, G3, H3,
+	A2, B2, C2, D2, E2, F2, G2, H2,
+	A1, B1, C1, D1, E1, F1, G1, H1,
 }
 
 impl Square {
@@ -527,7 +528,7 @@ impl Square {
 
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
 	Up,
 	UpRight,

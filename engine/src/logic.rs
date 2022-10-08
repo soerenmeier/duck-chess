@@ -1,4 +1,4 @@
-use crate::types::{PieceKind, Square, Side, Board, Move, PieceMove, MoveKind};
+use crate::types::{PieceKind, Square, Side, Board, Move, PieceMove};
 use crate::pgn::{PgnMove, PgnPieceMove};
 
 pub struct ComputedBoard {
@@ -10,10 +10,8 @@ pub struct ComputedBoard {
 }
 
 impl ComputedBoard {
-	pub fn new() -> Self {
-		let mut board = Board::new();
-		board.set_start_position();
-
+	/// expects the board to be valid
+	pub fn from_board(board: Board) -> Self {
 		let mut this = Self {
 			inner: board,
 			white_pieces: vec![],
@@ -23,6 +21,13 @@ impl ComputedBoard {
 		this.compute_from_board();
 
 		this
+	}
+
+	pub fn new() -> Self {
+		let mut board = Board::new();
+		board.set_start_position();
+
+		Self::from_board(board)
 	}
 
 	fn compute_from_board(&mut self) {
@@ -49,6 +54,14 @@ impl ComputedBoard {
 		}
 	}
 
+	pub fn next_move_side(&self) -> Side {
+		self.inner.next_move
+	}
+
+	pub fn moved_piece(&self) -> bool {
+		self.inner.moved_piece
+	}
+
 	pub fn available_piece_moves(&self, list: &mut Vec<PieceMove>) {
 		let pieces = match self.inner.next_move {
 			Side::White => &self.white_pieces,
@@ -58,6 +71,10 @@ impl ComputedBoard {
 		for (piece, square) in pieces {
 			self.inner.available_piece_moves(*piece, *square, list);
 		}
+	}
+
+	pub fn available_duck_squares(&self, list: &mut Vec<Square>) {
+		self.inner.available_duck_squares(list);
 	}
 
 	/// The move must be valid
@@ -77,16 +94,14 @@ impl ComputedBoard {
 				};
 
 				return Move {
-					piece: PieceMove {
-						kind: MoveKind::Castle {
-							from_king: Square::from_xy(fk, y),
-							to_king: Square::from_xy(tk, y),
-							from_rook: Square::from_xy(fr, y),
-							to_rook: Square::from_xy(tr, y)
-						},
-						side: self.inner.next_move
+					piece: PieceMove::Castle {
+						from_king: Square::from_xy(fk, y),
+						to_king: Square::from_xy(tk, y),
+						from_rook: Square::from_xy(fr, y),
+						to_rook: Square::from_xy(tr, y)
 					},
-					duck: mv.duck
+					duck: mv.duck,
+					side: self.inner.next_move
 				}
 			}
 		};
@@ -108,13 +123,13 @@ impl ComputedBoard {
 		}
 
 		for cand_mv in list {
-			let (mv_from, mv_to, mv_capture) = match cand_mv.kind {
-				MoveKind::Piece { from, to, capture, .. } => {
+			let (mv_from, mv_to, mv_capture) = match cand_mv {
+				PieceMove::Piece { from, to, capture, .. } => {
 					(from, to, capture.is_some())
 				},
-				MoveKind::EnPassant { from, to } => (from, to, true),
+				PieceMove::EnPassant { from, to } => (from, to, true),
 				// castles already handled
-				MoveKind::Castle { .. } => continue
+				PieceMove::Castle { .. } => continue
 			};
 
 			if capture != mv_capture {
@@ -131,7 +146,8 @@ impl ComputedBoard {
 				// found the move
 				return Move {
 					piece: cand_mv,
-					duck: mv.duck
+					duck: mv.duck,
+					side: self.inner.next_move
 				}
 			}
 		}
