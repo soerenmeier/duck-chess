@@ -26,6 +26,11 @@ export class Board extends Data {
 	getPiece(i) {
 		return this.board[i];
 	}
+
+	// returns the index or -1
+	duckPosition() {
+		return this.board.findIndex(p => p?.kind === 'Duck');
+	}
 }
 
 export class Piece extends Data {
@@ -106,6 +111,13 @@ export class PieceMove extends Data {
 			case 'Castle':
 				return this.toKing;
 		}
+	}
+
+	toJSON() {
+		const obj = {};
+		obj[this.kind] = {};
+		Object.assign(obj[this.kind], this);
+		return obj;
 	}
 }
 

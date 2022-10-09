@@ -13,16 +13,20 @@ const pieceSpriteLookup = {
 	'WhiteKnight': [3, 0],
 	'WhiteRook': [4, 0],
 	'WhitePawn': [5, 0],
+	'WhiteDuck': [0, 0],
 	'BlackKing': [0, 1],
 	'BlackQueen': [1, 1],
 	'BlackBishop': [2, 1],
 	'BlackKnight': [3, 1],
 	'BlackRook': [4, 1],
-	'BlackPawn': [5, 1]
+	'BlackPawn': [5, 1],
+	'BlackDuck': [0, 1]
 }
 
 
 export default class BoardView {
+	// pub: board
+
 	constructor(ctx) {
 		this.ctx = ctx;
 		this.board = null;
@@ -33,6 +37,7 @@ export default class BoardView {
 		this.holdingPiece = null;
 		this.holdingPieceRealXY = null;
 
+		// index on the board or -1 which means the duck isn't placed
 		this.selectedPiece = null;
 		this.moveToHint = range(0, 64).map(() => false);
 
@@ -61,9 +66,17 @@ export default class BoardView {
 		this.moveToHint = range(0, 64).map(() => false);
 
 		this.availableMoves = await availableMoves(board);
-		console.log('moves', this.availableMoves);
+
+		if (board.movedPiece) {
+			this.selectedPiece = board.duckPosition();
+			this.availableMoves.squares.forEach(s => {
+				const idx = squareToIndex(s);
+				this.moveToHint[idx] = true;
+			});
+		}
 	}
 
+	// fn([kind, move])
 	onMove(fn) {
 		return this.moveListeners.add(fn);
 	}
@@ -133,17 +146,16 @@ export default class BoardView {
 		}
 	}
 
-	// /// returns the square at the coordinates (which are the canvas xy)
-	// squareAtRealXY(x, y) {
-		
-	// 	return indexToSquare(XYToIndex(x, y));
-	// }
-
 	mouseDown(rX, rY) {
 		let x = Math.floor(rX / this.squareWidth);
 		let y = Math.floor(rY / this.squareWidth);
 
 		const index = XYToIndex(x, y);
+
+		// mouse above hint so don't do anything until mouse up
+		if (this.selectedPiece !== null && this.moveToHint[index]) {
+			return;
+		}
 
 		// if (this.selectedPiece == index) {
 		// 	// just unselect
@@ -190,7 +202,7 @@ export default class BoardView {
 	}
 
 	mouseUp(rX, rY) {
-		const prevHolding = this.holdingPiece;
+		const startSquare = this.holdingPiece ?? this.selectedPiece;
 
 		this.holdingPiece = null;
 		this.holdingPieceRealXY = null;
@@ -206,19 +218,15 @@ export default class BoardView {
 		switch (this.availableMoves.kind) {
 			case 'Piece':
 				const move = this.availableMoves.moves.find(m => {
-					return squareToIndex(m.fromSquare()) == prevHolding &&
+					return squareToIndex(m.fromSquare()) == startSquare &&
 					squareToIndex(m.toSquare()) == index;
 				});
 
 				if (move)
-					this.moveListeners.trigger(move);
+					this.moveListeners.trigger(['Piece', move]);
 				break;
 			case 'Duck':
-				throw new Error('todo duck');
-				// this.availableMoves.squares.forEach(s => {
-				// 	const idx = squareToIndex(s);
-				// 	this.moveToHint[idx] = true;
-				// });
+				this.moveListeners.trigger(['Duck', indexToSquare(index)]);
 				break;
 		}
 	}

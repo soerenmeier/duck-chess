@@ -53,3 +53,19 @@ export async function availableMoves(board) {
 	const d = await api.request('POST', '/available-moves', { board });
 	return new AvailableMoves(d);
 }
+
+export class ApplyMove extends Data {
+	constructor(d) {
+		super({
+			board: Board
+		}, d);
+	}
+}
+
+// kind: Piece | Duck, mov: PieceMove | Square
+export async function applyMove(kind, mov, board) {
+	const obj = {};
+	obj[kind] = { board, mov };
+	const d = await api.request('POST', '/apply-move', obj);
+	return (new ApplyMove(d)).board;
+}

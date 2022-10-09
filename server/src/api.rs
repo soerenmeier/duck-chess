@@ -51,27 +51,26 @@ impl Request for AvailableMovesReq {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ApplyMove {
-	pub board: Board
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AvailableMoves {
+pub enum ApplyMoveReq {
 	Piece {
-		moves: Vec<PieceMove>,
-		side: Side
+		board: Board,
+		mov: PieceMove
 	},
 	Duck {
-		squares: Vec<Square>,
-		side: Side
+		board: Board,
+		mov: Square
 	}
 }
 
-impl Request for AvailableMovesReq {
-	type Response = AvailableMoves;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApplyMove {
+	pub board: Board
+}
+
+impl Request for ApplyMoveReq {
+	type Response = ApplyMove;
 	type Error = Error;
 
-	const PATH: &'static str = "/api/available-moves";
+	const PATH: &'static str = "/api/apply-move";
 	const METHOD: Method = Method::Post;
 }

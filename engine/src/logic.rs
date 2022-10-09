@@ -23,6 +23,10 @@ impl ComputedBoard {
 		this
 	}
 
+	pub fn into_board(self) -> Board {
+		self.inner
+	}
+
 	pub fn new() -> Self {
 		let mut board = Board::new();
 		board.set_start_position();
@@ -31,6 +35,9 @@ impl ComputedBoard {
 	}
 
 	fn compute_from_board(&mut self) {
+		self.white_pieces.clear();
+		self.black_pieces.clear();
+
 		for (num, piece) in self.inner.board.iter().enumerate() {
 			let Some(piece) = piece else {
 				continue
@@ -153,6 +160,18 @@ impl ComputedBoard {
 		}
 
 		panic!("no move found")
+	}
+
+	pub fn apply_piece_move(&mut self, piece_move: PieceMove) {
+		self.inner.apply_piece_move(piece_move);
+		// todo optimize this
+		self.compute_from_board();
+	}
+
+	pub fn apply_duck_move(&mut self, square: Square) {
+		self.inner.apply_duck_move(square);
+
+		// since the duck is not stored in pieces we don't need to update it
 	}
 }
 

@@ -2,6 +2,7 @@
 	import { timeout } from 'fire/util.js';
 	import Context2d from 'fire/dom/context2d.js';
 	import BoardView from './boardview.js';
+	import { applyMove } from './api/api.js';
 
 	// should be a Board (see api)
 	export let board;
@@ -17,8 +18,10 @@
 
 		view = new BoardView(ctx, board);
 
-		view.onMove(move => {
-			console.log('wan\'t to move', move);
+		view.onMove(async ([kind, move]) => {
+			console.log('wan\'t to move', kind, move);
+			const nBoard = await applyMove(kind, move, view.board);
+			await view.updateBoard(nBoard);
 		})
 
 		// load sprite

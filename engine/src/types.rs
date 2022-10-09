@@ -78,6 +78,10 @@ impl Board {
 		unsafe { *self.board.get_unchecked(square as u8 as usize) }
 	}
 
+	pub fn piece_at_mut(&mut self, square: Square) -> &mut Option<Piece> {
+		unsafe { self.board.get_unchecked_mut(square as u8 as usize) }
+	}
+
 	fn can_eat_piece(piece: Piece, side: Side) -> bool {
 		!piece.kind.is_duck() && piece.side != side
 	}
@@ -200,14 +204,22 @@ impl Board {
 			PieceKind::Bishop,
 			PieceKind::Queen
 		];
+		const DIRECTION_WHITE: Direction = Direction::Up;
+		const DIRECTION_BLACK: Direction = Direction::Down;
+		const TAKE_PIECE_WHITE: &[Direction] = &[
+			Direction::UpLeft, Direction::UpRight
+		];
+		const TAKE_PIECE_BLACK: &[Direction] = &[
+			Direction::DownLeft, Direction::DownRight
+		];
 
 		let Some(piece) = self.piece_at(square) else {
 			panic!("no piece")
 		};
 
-		let (second_rank, to_promotion) = match piece.side {
-			Side::White => (6, 1),
-			Side::Black => (1, 6)
+		let (second_rank, to_promotion, dir, take_dirs) = match piece.side {
+			Side::White => (6, 1, DIRECTION_WHITE, TAKE_PIECE_WHITE),
+			Side::Black => (1, 6, DIRECTION_BLACK, TAKE_PIECE_BLACK)
 		};
 		let can_promote = square.y() == to_promotion;
 
@@ -221,7 +233,7 @@ impl Board {
 		{
 			let mut up_square = square;
 			for _ in 0..move_dist {
-				if !up_square.apply_dir(Direction::Up) ||
+				if !up_square.apply_dir(dir) ||
 					self.piece_at(up_square).is_some()
 				{
 					break
@@ -239,7 +251,7 @@ impl Board {
 
 		// promotion
 		if can_promote {
-			let promotion_square = square.add_dir(Direction::Up).unwrap();
+			let promotion_square = square.add_dir(dir).unwrap();
 			if self.piece_at(promotion_square).is_none() {
 				for promotion_piece in CAN_PROMOTE_TO {
 					list.push(PieceMove::Piece {
@@ -254,7 +266,7 @@ impl Board {
 		}
 
 		// take piece
-		for dir in &[Direction::UpLeft, Direction::UpRight] {
+		for dir in take_dirs {
 			let Some(new_square) = square.add_dir(*dir) else {
 				continue
 			};
@@ -379,6 +391,111 @@ impl Board {
 			}
 		}
 	}
+
+	pub fn set_can_castle(&mut self, can_castle: bool, long: bool) {
+		match self.next_move {
+			Side::White if long => {
+				self.can_castle.white.0 = can_castle;
+			},
+			Side::White => {
+				self.can_castle.white.1 = can_castle;
+			},
+			Side::Black if long => {
+				self.can_castle.black.0 = can_castle;
+			},
+			Side::Black => {
+				self.can_castle.black.1 = can_castle;
+			}
+		}
+	}
+
+	// the move needs to be valid
+	pub fn apply_piece_move(&mut self, mv: PieceMove) {
+		assert!(!self.moved_piece);
+
+		let mut new_en_passant = None;
+
+		match mv {
+			PieceMove::Piece { piece, from, to, capture, promotion } => {
+				match piece {
+					PieceKind::Rook => {
+						// long
+						if from.x() == 0 {
+							self.set_can_castle(false, true);
+						// short
+						} else if from.x() == 7 {
+							self.set_can_castle(false, false);
+						}
+					},
+					PieceKind::King => {
+						self.set_can_castle(false, true);
+						self.set_can_castle(false, false);
+					},
+					PieceKind::Pawn => {
+						// check if it is a double move
+						if from.x() == to.x() &&
+							from.y().abs_diff(to.y()) == 2
+						{
+							new_en_passant = Some(to);
+						}
+					},
+					_ => {}
+				}
+
+				// now do the move
+				let new_piece = match promotion {
+					Some(kind) => Piece { kind, side: self.next_move },
+					None => self.piece_at(from).unwrap()
+				};
+
+				*self.piece_at_mut(from) = None;
+				self.piece_at_mut(to).replace(new_piece);
+			},
+			PieceMove::EnPassant { from, to } => {
+				let square = self.en_passant.take().unwrap();
+				*self.piece_at_mut(square) = None;
+				let pawn = self.piece_at(from).unwrap();
+				*self.piece_at_mut(from) = None;
+				self.piece_at_mut(to).replace(pawn);
+			},
+			PieceMove::Castle { from_king, to_king, from_rook, to_rook } => {
+				let king = self.piece_at(from_king).unwrap();
+				let rook = self.piece_at(from_rook).unwrap();
+				*self.piece_at_mut(from_king) = None;
+				*self.piece_at_mut(from_rook) = None;
+				self.piece_at_mut(to_king).replace(king);
+				self.piece_at_mut(to_rook).replace(rook);
+
+				self.set_can_castle(false, true);
+				self.set_can_castle(false, false);
+			}
+		}
+
+		// we moved something reset values
+		self.en_passant = new_en_passant;
+		self.moved_piece = true;
+	}
+
+	pub fn apply_duck_move(&mut self, square: Square) {
+		assert!(self.moved_piece);
+
+		// remove the duck if it exists
+		for piece in self.board.iter_mut() {
+			if matches!(piece, Some(p) if p.kind.is_duck()) {
+				*piece = None;
+			}
+		}
+
+		let next_move = self.next_move;
+
+		self.piece_at_mut(square).replace(Piece {
+			kind: PieceKind::Duck,
+			side: next_move
+		});
+
+		self.moved_piece = false;
+		self.next_move = self.next_move.other();
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -431,6 +548,15 @@ pub struct CanCastle {
 pub enum Side {
 	White,
 	Black
+}
+
+impl Side {
+	pub fn other(&self) -> Self {
+		match self {
+			Self::White => Self::Black,
+			Self::Black => Self::White
+		}
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
