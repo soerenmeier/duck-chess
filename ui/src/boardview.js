@@ -13,14 +13,14 @@ const pieceSpriteLookup = {
 	'WhiteKnight': [3, 0],
 	'WhiteRook': [4, 0],
 	'WhitePawn': [5, 0],
-	'WhiteDuck': [0, 0],
+	'WhiteDuck': [6, 0],
 	'BlackKing': [0, 1],
 	'BlackQueen': [1, 1],
 	'BlackBishop': [2, 1],
 	'BlackKnight': [3, 1],
 	'BlackRook': [4, 1],
 	'BlackPawn': [5, 1],
-	'BlackDuck': [0, 1]
+	'BlackDuck': [6, 0]
 }
 
 
