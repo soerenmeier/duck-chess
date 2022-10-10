@@ -68,11 +68,14 @@ export default class BoardView {
 		this.availableMoves = await availableMoves(board);
 
 		if (board.movedPiece) {
-			this.selectedPiece = board.duckPosition();
-			this.availableMoves.squares.forEach(s => {
-				const idx = squareToIndex(s);
-				this.moveToHint[idx] = true;
-			});
+			const foundDuck = board.duckPosition();
+			if (foundDuck === -1) {
+				this.selectedPiece = -1;
+				this.availableMoves.squares.forEach(s => {
+					const idx = squareToIndex(s);
+					this.moveToHint[idx] = true;
+				});
+			}
 		}
 	}
 
@@ -180,11 +183,24 @@ export default class BoardView {
 				});
 				break;
 			case 'Duck':
-				throw new Error('todo duck');
-				// this.availableMoves.squares.forEach(s => {
-				// 	const idx = squareToIndex(s);
-				// 	this.moveToHint[idx] = true;
-				// });
+				const duckIndex = this.board.duckPosition();
+				const showHint = duckIndex === -1 || duckIndex === index;
+
+				if (showHint) {
+					this.availableMoves.squares.forEach(s => {
+						const idx = squareToIndex(s);
+						this.moveToHint[idx] = true;
+					});
+
+					// now if no duck is available we can't drag and drop so
+					// just show the hint again
+					if (duckIndex === -1) {
+						this.selectedPiece = -1;
+						return;
+					} else {
+						pieceFound = true;
+					}
+				}
 				break;
 		}
 

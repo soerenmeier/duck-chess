@@ -2,7 +2,7 @@ use crate::error::Error;
 
 use fire_api::request::{Request, Method};
 
-use engine::types::{Board, PieceMove, Square, Side};
+use engine::types::{Board, PieceMove, Square, Side, Move};
 
 use serde::{Serialize, Deserialize};
 
@@ -72,5 +72,25 @@ impl Request for ApplyMoveReq {
 	type Error = Error;
 
 	const PATH: &'static str = "/api/apply-move";
+	const METHOD: Method = Method::Post;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluateBoardReq {
+	pub board: Board,
+	pub depth: usize
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluateBoard {
+	// first one is the score
+	pub moves: Vec<(f32, Move)>
+}
+
+impl Request for EvaluateBoardReq {
+	type Response = EvaluateBoard;
+	type Error = Error;
+
+	const PATH: &'static str = "/api/evaluate-board";
 	const METHOD: Method = Method::Post;
 }

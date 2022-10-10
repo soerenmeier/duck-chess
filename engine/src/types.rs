@@ -295,12 +295,8 @@ impl Board {
 				return
 			}
 
-			let new_square = Square::from_xy(
-				en_passant_square.x(),
-				// since en passant can only happen after a two distance move
-				// we know that the pawn will endup on the second rank
-				second_rank
-			);
+			let mut new_square = en_passant_square;
+			new_square.apply_dir(dir);
 
 			list.push(PieceMove::EnPassant {
 				from: square,
@@ -557,6 +553,14 @@ impl Side {
 			Self::Black => Self::White
 		}
 	}
+
+	// returns +1 for White and -1 for Black
+	pub fn multi(&self) -> f32 {
+		match self {
+			Self::White => 1f32,
+			Self::Black => -1f32
+		}
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -610,6 +614,11 @@ impl Square {
 	#[inline]
 	pub fn from_u8(num: u8) -> Self {
 		assert!(num < 64);
+		unsafe { mem::transmute(num) }
+	}
+
+	/// the number needs to be lower than 64
+	pub unsafe fn from_u8_unchecked(num: u8) -> Self {
 		unsafe { mem::transmute(num) }
 	}
 

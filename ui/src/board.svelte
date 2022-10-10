@@ -19,9 +19,7 @@
 		view = new BoardView(ctx, board);
 
 		view.onMove(async ([kind, move]) => {
-			console.log('wan\'t to move', kind, move);
-			const nBoard = await applyMove(kind, move, view.board);
-			await view.updateBoard(nBoard);
+			board = await applyMove(kind, move, view.board);
 		})
 
 		// load sprite
@@ -43,10 +41,16 @@
 	// click handling
 	let mouseDown = false;
 
+	// might return [null, null] if the xy is invalid
 	function getMouseCanvasXY(ev) {
 		const offset = canvas.getBoundingClientRect();
-		const x = ev.clientX - offset.left;
-		const y = ev.clientY - offset.top;
+		let x = ev.clientX - offset.left;
+		let y = ev.clientY - offset.top;
+
+		if (x > offset.width || y > offset.height) {
+			x = null;
+			y = null;
+		}
 
 		return [x, y];
 	}
@@ -55,15 +59,16 @@
 		mouseDown = true;
 		const [x, y] = getMouseCanvasXY(e);
 
-		view.mouseDown(x, y);
-
-		// console.log(view.squareAtRealXY(x, y));
+		if (x !== null)
+			view.mouseDown(x, y);
 	}
+
 	function onMouseUp(e) {
 		mouseDown = false;
 		const [x, y] = getMouseCanvasXY(e);
 
-		view.mouseUp(x, y);
+		if (x !== null)
+			view.mouseUp(x, y);
 	}
 
 	function onMouseMove(e) {
@@ -72,7 +77,8 @@
 
 		const [x, y] = getMouseCanvasXY(e);
 
-		view.mouseMove(x, y);
+		if (x !== null)
+			view.mouseMove(x, y);
 	}
 
 </script>

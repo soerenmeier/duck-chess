@@ -4,7 +4,8 @@ use crate::error::Error;
 use crate::api::{
 	NewBoardReq, NewBoard,
 	AvailableMovesReq, AvailableMoves,
-	ApplyMoveReq, ApplyMove
+	ApplyMoveReq, ApplyMove,
+	EvaluateBoardReq, EvaluateBoard
 };
 
 use engine::types::{Board};
@@ -70,8 +71,21 @@ request_handler! {
 	}
 }
 
+request_handler! {
+	async fn evaluate_board(
+		req: EvaluateBoardReq
+	) -> Result<EvaluateBoard, Error> {
+		let board = ComputedBoard::from_board(req.board);
+
+		Ok(EvaluateBoard {
+			moves: board.evaluate(req.depth)
+		})
+	}
+}
+
 pub fn add_routes(server: &mut FireBuilder<Data>) {
 	server.add_route(new_board);
 	server.add_route(available_moves);
 	server.add_route(apply_move);
+	server.add_route(evaluate_board);
 }

@@ -8,8 +8,7 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub enum Error {
 	Internal(String),
-	Request(String),
-	InvalidRange
+	Request(String)
 }
 
 impl fmt::Display for Error {
@@ -30,8 +29,7 @@ impl ApiError for Error {
 	fn status_code(&self) -> StatusCode {
 		match self {
 			Self::Internal(_) => StatusCode::InternalServerError,
-			Self::Request(_) |
-			Self::InvalidRange => StatusCode::BadRequest
+			Self::Request(_) => StatusCode::BadRequest
 		}
 	}
 }
