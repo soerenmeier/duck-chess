@@ -121,6 +121,16 @@ export class PieceMove extends Data {
 	}
 }
 
+export class Move extends Data {
+	constructor(d) {
+		super({
+			piece: PieceMove,
+			duck: 'str',
+			side: 'str'
+		}, d);
+	}
+}
+
 const SQUARES = [
 	'A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8', 'H8',
 	'A7', 'B7', 'C7', 'D7', 'E7', 'F7', 'G7', 'H7',

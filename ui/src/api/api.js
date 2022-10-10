@@ -1,7 +1,7 @@
 
 import Data from 'fire/data/data.js';
 import Api from 'fire/api/api.js';
-import { Board, PieceMove } from './data.js';
+import { Board, PieceMove, Move } from './data.js';
 
 const api = new Api('http://127.0.0.1:1658/api');
 
@@ -68,4 +68,17 @@ export async function applyMove(kind, mov, board) {
 	obj[kind] = { board, mov };
 	const d = await api.request('POST', '/apply-move', obj);
 	return (new ApplyMove(d)).board;
+}
+
+export class EvaluateBoard extends Data {
+	constructor(d) {
+		super({
+			moves: [['float', Move]]
+		}, d);
+	}
+}
+
+export async function evaluateBoard(board, depth) {
+	const d = await api.request('POST', '/evaluate-board', { board, depth });
+	return (new EvaluateBoard(d)).moves;
 }

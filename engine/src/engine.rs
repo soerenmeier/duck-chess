@@ -2,6 +2,11 @@ use crate::types::{Board, PieceKind};
 
 // evaluate_board_in_pool
 
+// we have threads that take work
+// when putting the value into the pool you get a receipt (a token)
+
+
+
 /// returns a score of a board + for white - for black
 pub fn evaluate_single_board(board: &Board) -> f32 {
 	// for the moment just count points

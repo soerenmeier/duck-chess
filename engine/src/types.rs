@@ -714,7 +714,7 @@ impl Direction {
 			Self::DownRight => (1, 1),
 			Self::Down => (0, 1),
 			Self::DownLeft => (-1, 1),
-			Self::Left => (-1, 1),
+			Self::Left => (-1, 0),
 			Self::UpLeft => (-1, -1),
 			// knight
 			Self::KnUpRight => (1, -2),

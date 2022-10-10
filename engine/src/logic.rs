@@ -171,9 +171,13 @@ impl ComputedBoard {
 		self.inner.apply_duck_move(square);
 	}
 
-	// can only be called if a piece moves was not done
+	// can only be called if a piece move is expected
+	// the score is depending on the player who should play the move
+	// so > 0 is better for self.next_move_self()
 	pub fn evaluate(&self, depth: usize) -> Vec<(f32, Move)> {
 		let mut moves = Vec::with_capacity(64 * 64);
+
+		let next_side = self.inner.next_move;
 
 		let mut piece_moves = Vec::with_capacity(64);
 		self.available_piece_moves(&mut piece_moves);
@@ -186,13 +190,21 @@ impl ComputedBoard {
 			for square in duck_moves.iter() {
 				let mut board = board.clone();
 				board.apply_duck_move(*square);
-				let mut score = evaluate_single_board(&board.inner);
 
-				// if depth != 0 {
-				// 	let mut moves = board.evaluate(depth - 1);
-				// 	// this is the oponent moves
-				// 	for moves 
-				// }
+				// let's check deeper
+				let score = if depth > 0 {
+					let next_moves = board.evaluate(depth - 1);
+					// 
+					let best_score: f32 = next_moves.iter()
+						.map(|(sc, _)| *sc)
+						.reduce(|accum, score| accum.max(score))
+						.unwrap_or(0f32);
+
+					// reverse it because the move is beneficial for our oponent
+					-1f32 * best_score
+				} else {
+					evaluate_single_board(&board.inner) * next_side.multi()
+				};
 
 				moves.push((score, Move {
 					piece: piece_move,

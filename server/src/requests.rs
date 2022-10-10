@@ -8,6 +8,8 @@ use crate::api::{
 	EvaluateBoardReq, EvaluateBoard
 };
 
+use tokio::task::spawn_blocking;
+
 use engine::types::{Board};
 use engine::logic::ComputedBoard;
 
@@ -77,9 +79,14 @@ request_handler! {
 	) -> Result<EvaluateBoard, Error> {
 		let board = ComputedBoard::from_board(req.board);
 
-		Ok(EvaluateBoard {
-			moves: board.evaluate(req.depth)
-		})
+		let mut moves = spawn_blocking(move || {
+			board.evaluate(req.depth)
+		}).await.unwrap();
+
+		moves.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
+		moves.truncate(50);
+
+		Ok(EvaluateBoard { moves })
 	}
 }
 
