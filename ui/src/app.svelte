@@ -23,9 +23,25 @@
 		if (board.movedPiece || !boardInited)
 			return;
 		loadingEval = true;
-		const moves = await evaluateBoardApi(board, depth);
+		evalMoves = await evaluateBoardApi(board, depth);
 		loadingEval = false;
 		console.log('moves', moves);
+	}
+
+	function displayMove(move) {
+		let pieceText;
+		switch (move.piece.kind) {
+			case 'Piece':
+				pieceText = `${move.piece.piece} ${move.piece.from}>${move.piece.to}`;
+				break;
+			case 'EnPassant':
+				pieceText = `Pawn ${move.piece.from}>${move.piece.to}`;
+				break;
+			case 'Castle':
+				pieceText = `Castle ${move.piece.fromKing}>${move.piece.toKing}`;
+				break;
+		}
+		return `${move.side} ${pieceText}, Duck ${move.duck}`;
 	}
 
 	load();
@@ -43,7 +59,8 @@
 			<p>Loading..</p>
 		{/if}
 		<div class="list">
-			{#each [score, move] as evalMoves}
+			{#each evalMoves as [score, move]}
+				<p>{score}: {displayMove(move)}</p>
 			{/each}
 		</div>
 	</div>

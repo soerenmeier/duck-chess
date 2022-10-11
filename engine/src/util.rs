@@ -27,11 +27,12 @@ impl<T, const L: usize> HighestScoreArray<T, L> {
 	}
 
 	pub fn should_insert(&self, score: f32) -> bool {
-		score > self.lowest_score().unwrap_or(f32::MIN)
+		score > self.lowest_score().unwrap_or(f32::MIN) ||
+		!self.inner.is_full()
 	}
 
 	fn sort(&mut self) {
-		self.inner.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+		self.inner.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
 	}
 
 	/// ## Panics
@@ -41,7 +42,7 @@ impl<T, const L: usize> HighestScoreArray<T, L> {
 			return
 		}
 
-		if self.inner.capacity() == 0 {
+		if self.inner.is_full() {
 			self.inner.pop();
 		}
 		self.inner.push((score, val));
@@ -56,5 +57,23 @@ impl<T, const L: usize> HighestScoreArray<T, L> {
 impl<T: Clone, const L: usize> HighestScoreArray<T, L> {
 	pub fn to_vec(&self) -> Vec<(f32, T)> {
 		self.inner.to_vec()
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_fn() {
+		let mut list: HighestScoreArray<_, 3> = HighestScoreArray::new();
+		list.insert(0f32, ());
+		assert_eq!(list.lowest_score().unwrap(), 0f32);
+		list.insert(-3f32, ());
+		assert_eq!(list.lowest_score().unwrap(), -3f32);
+		list.insert(5f32, ());
+		assert_eq!(list.lowest_score().unwrap(), -3f32);
+		list.insert(-8f32, ());
+		assert_eq!(list.lowest_score().unwrap(), -3f32);
 	}
 }

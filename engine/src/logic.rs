@@ -178,13 +178,24 @@ impl ComputedBoard {
 	// the score is depending on the player who should play the move
 	// so > 0 is better for self.next_move_self()
 	pub fn evaluate(&self, depth: usize) -> HighestScoreArray<Move, 3> {
+		self.evaluate_inner(depth, f32::MIN, f32::MAX)
+	}
+
+	fn evaluate_inner(
+		&self,
+		depth: usize,
+		// best score for the player that needs to move
+		mut alpha: f32,
+		// best score for the oponent
+		beta: f32
+	) -> HighestScoreArray<Move, 3> {
 		let mut moves = HighestScoreArray::new();
 
 		let next_side = self.inner.next_move;
 
-		let mut piece_moves = Vec::with_capacity(64);
+		let mut piece_moves = Vec::with_capacity(128);
 		self.available_piece_moves(&mut piece_moves);
-		let mut duck_moves = Vec::with_capacity(64);
+		let mut duck_moves = Vec::with_capacity(128);
 		for piece_move in piece_moves {
 			duck_moves.clear();
 
@@ -198,8 +209,14 @@ impl ComputedBoard {
 
 				// let's check deeper
 				let score = if depth > 0 {
-					let next_moves = board.evaluate(depth - 1);
-					// 
+					let next_moves = board.evaluate_inner(
+						depth - 1,
+						// reverse best scores since the oponnent is now the
+						// active player
+						beta,
+						alpha
+					);
+					// opponent's best score
 					let best_score = next_moves.highest_score()
 						.unwrap_or(0f32);
 
@@ -209,11 +226,20 @@ impl ComputedBoard {
 					evaluate_single_board(&board.inner) * next_side.multi()
 				};
 
+				// store best score for us
+				alpha = alpha.max(score);
+
 				moves.insert(score, Move {
 					piece: piece_move,
 					duck: *square,
 					side: side
 				});
+
+				// if the best score for the opponent is smaller than our
+				// we have found a better move
+				if beta <= alpha {
+					return moves
+				}
 			}
 		}
 
