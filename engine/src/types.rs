@@ -1,3 +1,4 @@
+use crate::lookup::neighbor::has_neighbor;
 
 use std::mem;
 
@@ -388,6 +389,24 @@ impl Board {
 		}
 	}
 
+	/// only returns square which a piece is surounding
+	pub fn reasonable_duck_squares(&self, list: &mut Vec<Square>) {
+		assert!(self.moved_piece);
+		assert!(list.is_empty());
+
+		for (i, piece) in self.board.iter().enumerate() {
+			if piece.is_some() {
+				continue
+			}
+
+			let square = unsafe { Square::from_u8_unchecked(i as u8) };
+
+			if has_neighbor(square, self) {
+				list.push(square);
+			}
+		}
+	}
+
 	pub fn set_can_castle(&mut self, can_castle: bool, long: bool) {
 		match self.next_move {
 			Side::White if long => {
@@ -612,7 +631,7 @@ pub enum Square {
 impl Square {
 	// ## Panics if the number is 64 >=
 	#[inline]
-	pub fn from_u8(num: u8) -> Self {
+	pub const fn from_u8(num: u8) -> Self {
 		assert!(num < 64);
 		unsafe { mem::transmute(num) }
 	}
@@ -632,7 +651,7 @@ impl Square {
 
 	// needs to be valid coordinates 0-7 0-7
 	#[inline]
-	pub fn from_xy(x: u8, y: u8) -> Self {
+	pub const fn from_xy(x: u8, y: u8) -> Self {
 		Square::from_u8(y * 8 + x)
 	}
 

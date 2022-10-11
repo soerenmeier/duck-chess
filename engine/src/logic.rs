@@ -1,6 +1,7 @@
 use crate::types::{PieceKind, Square, Side, Board, Move, PieceMove};
 use crate::pgn::{PgnMove, PgnPieceMove};
 use crate::engine::{evaluate_single_board};
+use crate::util::HighestScoreArray;
 
 #[derive(Debug, Clone)]
 pub struct ComputedBoard {
@@ -59,8 +60,9 @@ impl ComputedBoard {
 		self.inner.moved_piece
 	}
 
+	// does not clear the list
 	pub fn available_piece_moves(&self, list: &mut Vec<PieceMove>) {
-		list.clear();
+		assert!(list.is_empty());
 
 		let my_side = self.inner.next_move;
 
@@ -76,8 +78,9 @@ impl ComputedBoard {
 		}
 	}
 
+	// does not clear the list
 	pub fn available_duck_squares(&self, list: &mut Vec<Square>) {
-		list.clear();
+		assert!(list.is_empty());
 
 		self.inner.available_duck_squares(list);
 	}
@@ -174,8 +177,8 @@ impl ComputedBoard {
 	// can only be called if a piece move is expected
 	// the score is depending on the player who should play the move
 	// so > 0 is better for self.next_move_self()
-	pub fn evaluate(&self, depth: usize) -> Vec<(f32, Move)> {
-		let mut moves = Vec::with_capacity(64 * 64);
+	pub fn evaluate(&self, depth: usize) -> HighestScoreArray<Move, 3> {
+		let mut moves = HighestScoreArray::new();
 
 		let next_side = self.inner.next_move;
 
@@ -183,10 +186,12 @@ impl ComputedBoard {
 		self.available_piece_moves(&mut piece_moves);
 		let mut duck_moves = Vec::with_capacity(64);
 		for piece_move in piece_moves {
+			duck_moves.clear();
+
 			let mut board = self.clone();
 			let side = board.inner.next_move;
 			board.apply_piece_move(piece_move);
-			board.available_duck_squares(&mut duck_moves);
+			board.inner.reasonable_duck_squares(&mut duck_moves);
 			for square in duck_moves.iter() {
 				let mut board = board.clone();
 				board.apply_duck_move(*square);
@@ -195,9 +200,7 @@ impl ComputedBoard {
 				let score = if depth > 0 {
 					let next_moves = board.evaluate(depth - 1);
 					// 
-					let best_score: f32 = next_moves.iter()
-						.map(|(sc, _)| *sc)
-						.reduce(|accum, score| accum.max(score))
+					let best_score = next_moves.highest_score()
 						.unwrap_or(0f32);
 
 					// reverse it because the move is beneficial for our oponent
@@ -206,11 +209,11 @@ impl ComputedBoard {
 					evaluate_single_board(&board.inner) * next_side.multi()
 				};
 
-				moves.push((score, Move {
+				moves.insert(score, Move {
 					piece: piece_move,
 					duck: *square,
 					side: side
-				}));
+				});
 			}
 		}
 
@@ -228,5 +231,12 @@ mod tests {
 		let mut list = vec![];
 		board.available_piece_moves(&mut list);
 		assert_eq!(list.len(), 20);
+	}
+
+	#[test]
+	fn evaluate() {
+		let mut board = ComputedBoard::new();
+		let moves = board.evaluate(1);
+		assert_eq!(moves.len(), 396);
 	}
 }

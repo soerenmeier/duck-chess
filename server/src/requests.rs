@@ -83,10 +83,7 @@ request_handler! {
 			board.evaluate(req.depth)
 		}).await.unwrap();
 
-		moves.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
-		moves.truncate(50);
-
-		Ok(EvaluateBoard { moves })
+		Ok(EvaluateBoard { moves: moves.to_vec() })
 	}
 }
 
