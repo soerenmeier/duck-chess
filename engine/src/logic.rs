@@ -1,17 +1,27 @@
-use crate::types::{PieceKind, Square, Side, Board, Move, PieceMove};
+use crate::types::{Square, Side, Board, Move, PieceMove};
 use crate::pgn::{PgnMove, PgnPieceMove};
 use crate::engine::{evaluate_single_board};
 use crate::util::HighestScoreArray;
 
 #[derive(Debug, Clone)]
 pub struct ComputedBoard {
-	inner: Board
+	inner: Board,
+	duck_square: Option<Square>
 }
 
 impl ComputedBoard {
 	/// expects the board to be valid
 	pub fn from_board(board: Board) -> Self {
-		Self { inner: board }
+		Self {
+			duck_square: Self::find_duck(&board),
+			inner: board
+		}
+	}
+
+	fn find_duck(board: &Board) -> Option<Square> {
+		iter_board!(board.board)
+			.find(|(square, p)| matches!(p, Some(p) if p.kind.is_duck()))
+			.map(|(sq, p)| sq)
 	}
 
 	pub fn into_board(self) -> Board {
@@ -61,6 +71,7 @@ impl ComputedBoard {
 	}
 
 	// does not clear the list
+	#[cfg_attr(feature = "flamegraph", inline(never))]
 	pub fn available_piece_moves(&self, list: &mut Vec<PieceMove>) {
 		assert!(list.is_empty());
 
@@ -171,7 +182,8 @@ impl ComputedBoard {
 	}
 
 	pub fn apply_duck_move(&mut self, square: Square) {
-		self.inner.apply_duck_move(square);
+		self.inner.apply_duck_move(square, self.duck_square);
+		self.duck_square = Some(square);
 	}
 
 	// can only be called if a piece move is expected
@@ -213,8 +225,8 @@ impl ComputedBoard {
 						depth - 1,
 						// reverse best scores since the oponnent is now the
 						// active player
-						beta,
-						alpha
+						-1f32 * beta,
+						-1f32 * alpha
 					);
 					// opponent's best score
 					let best_score = next_moves.highest_score()
@@ -253,7 +265,7 @@ mod tests {
 
 	#[test]
 	fn available_moves() {
-		let mut board = ComputedBoard::new();
+		let board = ComputedBoard::new();
 		let mut list = vec![];
 		board.available_piece_moves(&mut list);
 		assert_eq!(list.len(), 20);
@@ -261,7 +273,7 @@ mod tests {
 
 	#[test]
 	fn evaluate() {
-		let mut board = ComputedBoard::new();
+		let board = ComputedBoard::new();
 		let moves = board.evaluate(1);
 		assert_eq!(moves.len(), 396);
 	}

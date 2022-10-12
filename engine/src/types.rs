@@ -1,4 +1,5 @@
 use crate::lookup::neighbor::has_neighbor;
+use crate::engine::BitBoard;
 
 use std::mem;
 
@@ -43,6 +44,8 @@ macro_rules! setup_board {
 	(wK) => (Some(Piece { kind: PieceKind::King, side: Side::White }));
 	(wP) => (Some(Piece { kind: PieceKind::Pawn, side: Side::White }));
 }
+
+
 
 impl Board {
 	pub fn new() -> Self {
@@ -120,7 +123,7 @@ impl Board {
 
 		for dir in dirs {
 			let mut to = from;
-			for dist in 0..dist {
+			for _ in 0..dist {
 				if !to.apply_dir(*dir) {
 					break
 				}
@@ -382,9 +385,9 @@ impl Board {
 	pub fn available_duck_squares(&self, list: &mut Vec<Square>) {
 		assert!(self.moved_piece);
 
-		for (i, piece) in self.board.iter().enumerate() {
+		for (square, piece) in iter_board!(self.board) {
 			if piece.is_none() {
-				list.push(Square::from_u8(i as u8));
+				list.push(square);
 			}
 		}
 	}
@@ -394,14 +397,27 @@ impl Board {
 		assert!(self.moved_piece);
 		assert!(list.is_empty());
 
-		for (i, piece) in self.board.iter().enumerate() {
+		let oponnent = self.next_move.other();
+		let mut oponnent_pieces = BitBoard::new();
+
+		// gather data
+		for (square, piece) in iter_board!(self.board) {
+			let Some(piece) = piece else {
+				continue
+			};
+
+			if piece.side == oponnent || piece.kind.is_duck() {
+				oponnent_pieces.set(square);
+			}
+		}
+
+		// do the check
+		for (square, piece) in iter_board!(self.board) {
 			if piece.is_some() {
 				continue
 			}
 
-			let square = unsafe { Square::from_u8_unchecked(i as u8) };
-
-			if has_neighbor(square, self) {
+			if has_neighbor(square, oponnent_pieces) {
 				list.push(square);
 			}
 		}
@@ -425,13 +441,14 @@ impl Board {
 	}
 
 	// the move needs to be valid
+	#[cfg_attr(feature = "flamegraph", inline(never))]
 	pub fn apply_piece_move(&mut self, mv: PieceMove) {
 		assert!(!self.moved_piece);
 
 		let mut new_en_passant = None;
 
 		match mv {
-			PieceMove::Piece { piece, from, to, capture, promotion } => {
+			PieceMove::Piece { piece, from, to, promotion, .. } => {
 				match piece {
 					PieceKind::Rook => {
 						// long
@@ -491,14 +508,22 @@ impl Board {
 		self.moved_piece = true;
 	}
 
-	pub fn apply_duck_move(&mut self, square: Square) {
+	#[cfg_attr(feature = "flamegraph", inline(never))]
+	pub fn apply_duck_move(
+		&mut self,
+		square: Square,
+		duck_square: Option<Square>
+	) {
 		assert!(self.moved_piece);
 
 		// remove the duck if it exists
-		for piece in self.board.iter_mut() {
-			if matches!(piece, Some(p) if p.kind.is_duck()) {
-				*piece = None;
-			}
+		// for piece in self.board.iter_mut() {
+		// 	if matches!(piece, Some(p) if p.kind.is_duck()) {
+		// 		*piece = None;
+		// 	}
+		// }
+		if let Some(duck_square) = duck_square {
+			*self.piece_at_mut(duck_square) = None;
 		}
 
 		let next_move = self.next_move;
