@@ -1,9 +1,11 @@
-
 import Data from 'fire/data/data.js';
 import Api from 'fire/api/api.js';
 import { Board, PieceMove, Move } from './data.js';
 
-const api = new Api('http://127.0.0.1:1658/api');
+let addr = '/api';
+if (import.meta.env.MODE !== 'production')
+	addr = 'http://127.0.0.1:1658/api';
+const api = new Api(addr);
 
 export class NewBoard extends Data {
 	constructor(d) {

@@ -4,7 +4,9 @@ import { availableMoves } from './api/api.js';
 import { range } from 'fire/util.js';
 import Listeners from 'fire/util/listeners.js';
 
-const pieceSprite = new Sprite('/img/piece_sprite.svg', 45, 45);
+import pieceSpriteSvg from '/assets/piece_sprite.svg';
+
+const pieceSprite = new Sprite(pieceSpriteSvg, 45, 45);
 
 const pieceSpriteLookup = {
 	'WhiteKing': [0, 0],

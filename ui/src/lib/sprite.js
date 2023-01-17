@@ -1,4 +1,3 @@
-
 export default class Sprite {
 	// w, h of the square
 	constructor(img, w, h) {

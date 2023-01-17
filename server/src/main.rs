@@ -1,4 +1,3 @@
-
 mod api;
 mod cors;
 mod error;
@@ -6,15 +5,9 @@ mod requests;
 
 use clap::Parser;
 
-use fire::{data_struct, static_file, static_files};
-
-data_struct!{
-	pub struct Data {}
+mod assets {
+	include!(concat!(env!("OUT_DIR"), "/assets_routes.rs"));
 }
-
-static_file!(Index, "/" => "./public/index.html");
-
-static_files!(Public, "/" => "./public");
 
 #[derive(Parser)]
 struct Args {
@@ -26,20 +19,15 @@ struct Args {
 async fn main() {
 	let args = Args::parse();
 
-	let data = Data {};
-
-	let mut server = fire::build("0.0.0.0:1658", data)
-		.expect("Address could not be parsed");
+	let mut server = fire::build("0.0.0.0:1658").await.unwrap();
 
 	eprintln!("listening on 0.0.0.0:1658");
 
-	server.add_route(Index::new());
+	assets::add_routes(&mut server);
 	requests::add_routes(&mut server);
-	server.add_route(Public::new());
 	if args.enable_cors {
 		cors::add_routes(&mut server);
 	}
 
-	server.light().await
-		.expect("failed to start server");
+	server.ignite().await.unwrap();
 }

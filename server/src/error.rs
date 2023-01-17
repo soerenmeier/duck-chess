@@ -1,9 +1,9 @@
-
 use std::fmt;
 
 use fire_api::error::{ApiError, Error as BasicError, StatusCode};
 
 use serde::Serialize;
+
 
 #[derive(Debug, Serialize)]
 pub enum Error {
@@ -28,8 +28,8 @@ impl ApiError for Error {
 
 	fn status_code(&self) -> StatusCode {
 		match self {
-			Self::Internal(_) => StatusCode::InternalServerError,
-			Self::Request(_) => StatusCode::BadRequest
+			Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			Self::Request(_) => StatusCode::BAD_REQUEST
 		}
 	}
 }

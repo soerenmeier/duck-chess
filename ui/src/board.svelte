@@ -9,7 +9,6 @@
 
 	let view;
 	let canvas;
-	
 
 	async function newCanvas(el) {
 		canvas = el;

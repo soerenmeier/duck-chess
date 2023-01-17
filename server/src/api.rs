@@ -1,6 +1,6 @@
 use crate::error::Error;
 
-use fire_api::request::{Request, Method};
+use fire_api::{Request, Method};
 
 use engine::types::{Board, PieceMove, Square, Side, Move};
 
@@ -21,7 +21,7 @@ impl Request for NewBoardReq {
 	type Error = Error;
 
 	const PATH: &'static str = "/api/new-board";
-	const METHOD: Method = Method::Get;
+	const METHOD: Method = Method::GET;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ impl Request for AvailableMovesReq {
 	type Error = Error;
 
 	const PATH: &'static str = "/api/available-moves";
-	const METHOD: Method = Method::Post;
+	const METHOD: Method = Method::POST;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,7 +72,7 @@ impl Request for ApplyMoveReq {
 	type Error = Error;
 
 	const PATH: &'static str = "/api/apply-move";
-	const METHOD: Method = Method::Post;
+	const METHOD: Method = Method::POST;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,5 +92,5 @@ impl Request for EvaluateBoardReq {
 	type Error = Error;
 
 	const PATH: &'static str = "/api/evaluate-board";
-	const METHOD: Method = Method::Post;
+	const METHOD: Method = Method::POST;
 }
