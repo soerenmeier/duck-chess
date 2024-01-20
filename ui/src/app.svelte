@@ -25,7 +25,7 @@
 		loadingEval = true;
 		evalMoves = await evaluateBoardApi(board, depth);
 		loadingEval = false;
-		console.log('moves', moves);
+		// console.log('moves', moves);
 	}
 
 	function displayMove(move) {

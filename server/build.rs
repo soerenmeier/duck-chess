@@ -13,7 +13,9 @@ fn main() {
 
 	let ui_dist = Path::new("../ui/dist");
 	if !ui_dist.is_dir() {
-		fs::write(assets_routes, "pub fn add_routes(_: &mut FireBuilder) {}")
+		fs::write(assets_routes, "\
+			use fire::FireBuilder;\n\
+			pub fn add_routes(_: &mut FireBuilder) {}")
 			.unwrap();
 		return
 	}

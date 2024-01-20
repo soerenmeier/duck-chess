@@ -728,7 +728,7 @@ pub enum Direction {
 }
 
 impl Direction {
-	const ALL_NO_KNIGHTS: &[Self] = &[
+	const ALL_NO_KNIGHTS: &'static [Self] = &[
 		Self::Up,
 		Self::UpRight,
 		Self::Right,
@@ -739,7 +739,7 @@ impl Direction {
 		Self::UpLeft
 	];
 
-	const ALL_KNIGHTS: &[Self] = &[
+	const ALL_KNIGHTS: &'static [Self] = &[
 		Self::KnUpRight,
 		Self::KnRightUp,
 		Self::KnRightDown,
