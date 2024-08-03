@@ -622,6 +622,7 @@ pub struct Move {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "kind")]
 pub enum PieceMove {
 	Piece {
 		piece: PieceKind,

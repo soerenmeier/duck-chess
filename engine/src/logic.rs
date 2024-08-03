@@ -24,6 +24,10 @@ impl ComputedBoard {
 			.map(|(sq, _p)| sq)
 	}
 
+	pub fn board(&self) -> &Board {
+		&self.inner
+	}
+
 	pub fn into_board(self) -> Board {
 		self.inner
 	}
@@ -95,7 +99,7 @@ impl ComputedBoard {
 	}
 
 	/// The move must be valid
-	pub fn convert_pgn_move(&self, mv: PgnMove) -> Move {
+	pub fn convert_pgn_move(&self, mv: PgnMove) -> Option<Move> {
 		let (piece, from, to, capture) = match mv.piece {
 			PgnPieceMove::Piece {
 				piece,
@@ -113,7 +117,7 @@ impl ComputedBoard {
 					Side::Black => (4, 6, 7, 5, 0),
 				};
 
-				return Move {
+				return Some(Move {
 					piece: PieceMove::Castle {
 						from_king: Square::from_xy(fk, y),
 						to_king: Square::from_xy(tk, y),
@@ -122,7 +126,7 @@ impl ComputedBoard {
 					},
 					duck: mv.duck,
 					side: self.inner.next_move,
-				};
+				});
 			}
 		};
 
@@ -165,15 +169,15 @@ impl ComputedBoard {
 
 			if mv_to == to {
 				// found the move
-				return Move {
+				return Some(Move {
 					piece: cand_mv,
 					duck: mv.duck,
 					side: self.inner.next_move,
-				};
+				});
 			}
 		}
 
-		panic!("no move found")
+		None
 	}
 
 	pub fn apply_piece_move(&mut self, piece_move: PieceMove) {
