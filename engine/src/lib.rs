@@ -1,9 +1,8 @@
-
 #[macro_use]
 mod macros;
-pub mod types;
-pub mod pgn;
-pub mod logic;
 pub mod engine;
+pub mod logic;
 mod lookup;
+pub mod pgn;
+pub mod types;
 mod util;

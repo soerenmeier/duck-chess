@@ -1,12 +1,12 @@
-use crate::types::{Square, Side, Board, Move, PieceMove};
+use crate::engine::evaluate_single_board;
 use crate::pgn::{PgnMove, PgnPieceMove};
-use crate::engine::{evaluate_single_board};
+use crate::types::{Board, Move, PieceMove, Side, Square};
 use crate::util::HighestScoreArray;
 
 #[derive(Debug, Clone)]
 pub struct ComputedBoard {
 	inner: Board,
-	duck_square: Option<Square>
+	duck_square: Option<Square>,
 }
 
 impl ComputedBoard {
@@ -14,7 +14,7 @@ impl ComputedBoard {
 	pub fn from_board(board: Board) -> Self {
 		Self {
 			duck_square: Self::find_duck(&board),
-			inner: board
+			inner: board,
 		}
 	}
 
@@ -78,9 +78,7 @@ impl ComputedBoard {
 		let my_side = self.inner.next_move;
 
 		for (i, piece) in self.inner.board.iter().enumerate() {
-			let Some(piece) = piece else {
-				continue
-			};
+			let Some(piece) = piece else { continue };
 
 			if piece.side == my_side {
 				let square = unsafe { Square::from_u8_unchecked(i as u8) };
@@ -99,9 +97,12 @@ impl ComputedBoard {
 	/// The move must be valid
 	pub fn convert_pgn_move(&self, mv: PgnMove) -> Move {
 		let (piece, from, to, capture) = match mv.piece {
-			PgnPieceMove::Piece { piece, from, to, capture } => {
-				(piece, from, to, capture)
-			},
+			PgnPieceMove::Piece {
+				piece,
+				from,
+				to,
+				capture,
+			} => (piece, from, to, capture),
 			PgnPieceMove::Castle { long } => {
 				// we can calculate this without a lookup
 				// from king, to king ...
@@ -109,7 +110,7 @@ impl ComputedBoard {
 					Side::White if long => (4, 2, 0, 3, 7),
 					Side::White => (4, 6, 7, 5, 7),
 					Side::Black if long => (4, 2, 0, 3, 0),
-					Side::Black => (4, 6, 7, 5, 0)
+					Side::Black => (4, 6, 7, 5, 0),
 				};
 
 				return Move {
@@ -117,11 +118,11 @@ impl ComputedBoard {
 						from_king: Square::from_xy(fk, y),
 						to_king: Square::from_xy(tk, y),
 						from_rook: Square::from_xy(fr, y),
-						to_rook: Square::from_xy(tr, y)
+						to_rook: Square::from_xy(tr, y),
 					},
 					duck: mv.duck,
-					side: self.inner.next_move
-				}
+					side: self.inner.next_move,
+				};
 			}
 		};
 
@@ -131,12 +132,10 @@ impl ComputedBoard {
 		let my_side = self.inner.next_move;
 
 		for (i, p) in self.inner.board.iter().enumerate() {
-			let Some(p) = p else {
-				continue
-			};
+			let Some(p) = p else { continue };
 
 			if p.side != my_side || p.kind != piece {
-				continue
+				continue;
 			}
 
 			let square = unsafe { Square::from_u8_unchecked(i as u8) };
@@ -146,21 +145,21 @@ impl ComputedBoard {
 
 		for cand_mv in list {
 			let (mv_from, mv_to, mv_capture) = match cand_mv {
-				PieceMove::Piece { from, to, capture, .. } => {
-					(from, to, capture.is_some())
-				},
+				PieceMove::Piece {
+					from, to, capture, ..
+				} => (from, to, capture.is_some()),
 				PieceMove::EnPassant { from, to } => (from, to, true),
 				// castles already handled
-				PieceMove::Castle { .. } => continue
+				PieceMove::Castle { .. } => continue,
 			};
 
 			if capture != mv_capture {
-				continue
+				continue;
 			}
 
 			if let Some(from) = from {
 				if mv_from != from {
-					continue
+					continue;
 				}
 			}
 
@@ -169,8 +168,8 @@ impl ComputedBoard {
 				return Move {
 					piece: cand_mv,
 					duck: mv.duck,
-					side: self.inner.next_move
-				}
+					side: self.inner.next_move,
+				};
 			}
 		}
 
@@ -199,7 +198,7 @@ impl ComputedBoard {
 		// best score for the player that needs to move
 		mut alpha: f32,
 		// best score for the oponent
-		beta: f32
+		beta: f32,
 	) -> HighestScoreArray<Move, 3> {
 		let mut moves = HighestScoreArray::new();
 
@@ -226,11 +225,10 @@ impl ComputedBoard {
 						// reverse best scores since the oponnent is now the
 						// active player
 						-1f32 * beta,
-						-1f32 * alpha
+						-1f32 * alpha,
 					);
 					// opponent's best score
-					let best_score = next_moves.highest_score()
-						.unwrap_or(0f32);
+					let best_score = next_moves.highest_score().unwrap_or(0f32);
 
 					// reverse it because the move is beneficial for our oponent
 					-1f32 * best_score
@@ -241,16 +239,19 @@ impl ComputedBoard {
 				// store best score for us
 				alpha = alpha.max(score);
 
-				moves.insert(score, Move {
-					piece: piece_move,
-					duck: *square,
-					side: side
-				});
+				moves.insert(
+					score,
+					Move {
+						piece: piece_move,
+						duck: *square,
+						side: side,
+					},
+				);
 
 				// if the best score for the opponent is smaller than our
 				// we have found a better move
 				if beta <= alpha {
-					return moves
+					return moves;
 				}
 			}
 		}

@@ -1,9 +1,9 @@
-use crate::lookup::neighbor::has_neighbor;
 use crate::engine::BitBoard;
+use crate::lookup::neighbor::has_neighbor;
 
 use std::mem;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,7 +18,7 @@ pub struct Board {
 	pub next_move: Side,
 	// if this is true the duck should be moved
 	// and then the side should change
-	pub moved_piece: bool
+	pub moved_piece: bool,
 }
 
 // Board
@@ -45,20 +45,22 @@ macro_rules! setup_board {
 	(wP) => (Some(Piece { kind: PieceKind::Pawn, side: Side::White }));
 }
 
-
-
 impl Board {
 	pub fn new() -> Self {
 		Self {
 			board: [None; 64],
-			can_castle: CanCastle { white: (true, true), black: (true, true) },
+			can_castle: CanCastle {
+				white: (true, true),
+				black: (true, true),
+			},
 			en_passant: None,
 			next_move: Side::White,
-			moved_piece: false
+			moved_piece: false,
 		}
 	}
 
 	pub fn set_start_position(&mut self) {
+		#[rustfmt::skip]
 		setup_board!(self,
 			bR, bN, bB, bQ, bK, bB, bN, bR,
 			bP, bP, bP, bP, bP, bP, bP, bP,
@@ -71,7 +73,7 @@ impl Board {
 		);
 		self.can_castle = CanCastle {
 			white: (true, true),
-			black: (true, true)
+			black: (true, true),
 		};
 		self.en_passant = None;
 		self.next_move = Side::White;
@@ -94,10 +96,10 @@ impl Board {
 	fn valid_square_for_piece(
 		&self,
 		square: Square,
-		side: Side
+		side: Side,
 	) -> (bool, Option<PieceKind>) {
 		let Some(piece) = self.piece_at(square) else {
-			return (true, None)
+			return (true, None);
 		};
 
 		let valid = Self::can_eat_piece(piece, side);
@@ -114,7 +116,7 @@ impl Board {
 		dirs: &[Direction],
 		// if only one move can be done (true for king)
 		max_one: bool,
-		list: &mut Vec<PieceMove>
+		list: &mut Vec<PieceMove>,
 	) {
 		let dist = if max_one { 1 } else { 8 };
 		let Some(piece) = self.piece_at(from) else {
@@ -125,28 +127,27 @@ impl Board {
 			let mut to = from;
 			for _ in 0..dist {
 				if !to.apply_dir(*dir) {
-					break
+					break;
 				}
 
-				let (valid, capture) = self.valid_square_for_piece(
-					to,
-					piece.side
-				);
+				let (valid, capture) =
+					self.valid_square_for_piece(to, piece.side);
 
 				if !valid {
-					break
+					break;
 				}
 
 				list.push(PieceMove::Piece {
 					piece: piece.kind,
-					from, to,
+					from,
+					to,
 					capture,
-					promotion: None
+					promotion: None,
 				});
 
 				// cannot capture a piece after a capture
 				if capture.is_some() {
-					break
+					break;
 				}
 			}
 		}
@@ -156,7 +157,7 @@ impl Board {
 	fn available_castle_moves(
 		&self,
 		square: Square,
-		list: &mut Vec<PieceMove>
+		list: &mut Vec<PieceMove>,
 	) {
 		const LONG_FREE: &[u8] = &[1, 2, 3];
 		const SHORT_FREE: &[u8] = &[5, 6];
@@ -167,11 +168,12 @@ impl Board {
 
 		let (y, (can_castle_long, can_castle_short)) = match piece.side {
 			Side::White => (7, self.can_castle.white),
-			Side::Black => (0, self.can_castle.black)
+			Side::Black => (0, self.can_castle.black),
 		};
 
 		if can_castle_long {
-			let all_free = LONG_FREE.iter()
+			let all_free = LONG_FREE
+				.iter()
 				.map(|x| Square::from_xy(*x, y))
 				.all(|square| self.piece_at(square).is_none());
 
@@ -180,13 +182,14 @@ impl Board {
 					from_king: square,
 					to_king: Square::from_xy(2, y),
 					from_rook: Square::from_xy(0, y),
-					to_rook: Square::from_xy(3, y)
+					to_rook: Square::from_xy(3, y),
 				});
 			}
 		}
 
 		if can_castle_short {
-			let all_free = SHORT_FREE.iter()
+			let all_free = SHORT_FREE
+				.iter()
 				.map(|x| Square::from_xy(*x, y))
 				.all(|square| self.piece_at(square).is_none());
 
@@ -195,7 +198,7 @@ impl Board {
 					from_king: square,
 					to_king: Square::from_xy(6, y),
 					from_rook: Square::from_xy(7, y),
-					to_rook: Square::from_xy(5, y)
+					to_rook: Square::from_xy(5, y),
 				});
 			}
 		}
@@ -206,16 +209,14 @@ impl Board {
 			PieceKind::Rook,
 			PieceKind::Knight,
 			PieceKind::Bishop,
-			PieceKind::Queen
+			PieceKind::Queen,
 		];
 		const DIRECTION_WHITE: Direction = Direction::Up;
 		const DIRECTION_BLACK: Direction = Direction::Down;
-		const TAKE_PIECE_WHITE: &[Direction] = &[
-			Direction::UpLeft, Direction::UpRight
-		];
-		const TAKE_PIECE_BLACK: &[Direction] = &[
-			Direction::DownLeft, Direction::DownRight
-		];
+		const TAKE_PIECE_WHITE: &[Direction] =
+			&[Direction::UpLeft, Direction::UpRight];
+		const TAKE_PIECE_BLACK: &[Direction] =
+			&[Direction::DownLeft, Direction::DownRight];
 
 		let Some(piece) = self.piece_at(square) else {
 			panic!("no piece")
@@ -223,24 +224,20 @@ impl Board {
 
 		let (second_rank, to_promotion, dir, take_dirs) = match piece.side {
 			Side::White => (6, 1, DIRECTION_WHITE, TAKE_PIECE_WHITE),
-			Side::Black => (1, 6, DIRECTION_BLACK, TAKE_PIECE_BLACK)
+			Side::Black => (1, 6, DIRECTION_BLACK, TAKE_PIECE_BLACK),
 		};
 		let can_promote = square.y() == to_promotion;
 
-		let move_dist = if square.y() == second_rank {
-			2
-		} else {
-			1
-		};
+		let move_dist = if square.y() == second_rank { 2 } else { 1 };
 
 		// move up
 		{
 			let mut up_square = square;
 			for _ in 0..move_dist {
-				if !up_square.apply_dir(dir) ||
-					self.piece_at(up_square).is_some()
+				if !up_square.apply_dir(dir)
+					|| self.piece_at(up_square).is_some()
 				{
-					break
+					break;
 				}
 
 				list.push(PieceMove::Piece {
@@ -248,7 +245,7 @@ impl Board {
 					from: square,
 					to: up_square,
 					capture: None,
-					promotion: None
+					promotion: None,
 				});
 			}
 		}
@@ -263,7 +260,7 @@ impl Board {
 						from: square,
 						to: promotion_square,
 						capture: None,
-						promotion: Some(*promotion_piece)
+						promotion: Some(*promotion_piece),
 					});
 				}
 			}
@@ -272,11 +269,11 @@ impl Board {
 		// take piece
 		for dir in take_dirs {
 			let Some(new_square) = square.add_dir(*dir) else {
-				continue
+				continue;
 			};
 
 			let Some(eat_piece) = self.piece_at(new_square) else {
-				continue
+				continue;
 			};
 
 			if Self::can_eat_piece(eat_piece, piece.side) {
@@ -285,7 +282,7 @@ impl Board {
 					from: square,
 					to: new_square,
 					capture: Some(eat_piece.kind),
-					promotion: None
+					promotion: None,
 				});
 			}
 		}
@@ -293,10 +290,10 @@ impl Board {
 		// en passant
 		if let Some(en_passant_square) = self.en_passant {
 			// needs to be besides the pawn and on the same rank
-			if en_passant_square.y() != square.y() ||
-				square.x().abs_diff(en_passant_square.x()) != 1
+			if en_passant_square.y() != square.y()
+				|| square.x().abs_diff(en_passant_square.x()) != 1
 			{
-				return
+				return;
 			}
 
 			let mut new_square = en_passant_square;
@@ -304,7 +301,7 @@ impl Board {
 
 			list.push(PieceMove::EnPassant {
 				from: square,
-				to: new_square
+				to: new_square,
 			});
 		}
 	}
@@ -312,7 +309,7 @@ impl Board {
 	fn available_knight_moves(
 		&self,
 		square: Square,
-		list: &mut Vec<PieceMove>
+		list: &mut Vec<PieceMove>,
 	) {
 		let Some(piece) = self.piece_at(square) else {
 			panic!("no piece")
@@ -320,12 +317,12 @@ impl Board {
 
 		for dir in Direction::ALL_KNIGHTS {
 			let Some(new_square) = square.add_dir(*dir) else {
-				continue
+				continue;
 			};
 
 			let capture = if let Some(eat_piece) = self.piece_at(new_square) {
 				if !Self::can_eat_piece(eat_piece, piece.side) {
-					continue
+					continue;
 				}
 
 				Some(eat_piece.kind)
@@ -338,7 +335,7 @@ impl Board {
 				from: square,
 				to: new_square,
 				capture,
-				promotion: None
+				promotion: None,
 			});
 		}
 	}
@@ -347,38 +344,36 @@ impl Board {
 		&self,
 		piece: PieceKind,
 		square: Square,
-		list: &mut Vec<PieceMove>
+		list: &mut Vec<PieceMove>,
 	) {
 		assert!(!self.moved_piece);
 
 		match piece {
-			PieceKind::Rook |
-			PieceKind::Bishop |
-			PieceKind::Queen => {
+			PieceKind::Rook | PieceKind::Bishop | PieceKind::Queen => {
 				self.available_moves_by_dir(
 					square,
 					piece.directions(),
 					false,
-					list
+					list,
 				);
-			},
+			}
 			PieceKind::King => {
 				self.available_moves_by_dir(
 					square,
 					piece.directions(),
 					true,
-					list
+					list,
 				);
 
 				self.available_castle_moves(square, list);
-			},
+			}
 			PieceKind::Pawn => {
 				self.available_pawn_moves(square, list);
-			},
+			}
 			PieceKind::Knight => {
 				self.available_knight_moves(square, list);
-			},
-			PieceKind::Duck => unreachable!()
+			}
+			PieceKind::Duck => unreachable!(),
 		}
 	}
 
@@ -402,9 +397,7 @@ impl Board {
 
 		// gather data
 		for (square, piece) in iter_board!(self.board) {
-			let Some(piece) = piece else {
-				continue
-			};
+			let Some(piece) = piece else { continue };
 
 			if piece.side == oponnent || piece.kind.is_duck() {
 				oponnent_pieces.set(square);
@@ -414,7 +407,7 @@ impl Board {
 		// do the check
 		for (square, piece) in iter_board!(self.board) {
 			if piece.is_some() {
-				continue
+				continue;
 			}
 
 			if has_neighbor(square, oponnent_pieces) {
@@ -427,13 +420,13 @@ impl Board {
 		match self.next_move {
 			Side::White if long => {
 				self.can_castle.white.0 = can_castle;
-			},
+			}
 			Side::White => {
 				self.can_castle.white.1 = can_castle;
-			},
+			}
 			Side::Black if long => {
 				self.can_castle.black.0 = can_castle;
-			},
+			}
 			Side::Black => {
 				self.can_castle.black.1 = can_castle;
 			}
@@ -448,7 +441,13 @@ impl Board {
 		let mut new_en_passant = None;
 
 		match mv {
-			PieceMove::Piece { piece, from, to, promotion, .. } => {
+			PieceMove::Piece {
+				piece,
+				from,
+				to,
+				promotion,
+				..
+			} => {
 				match piece {
 					PieceKind::Rook => {
 						// long
@@ -458,39 +457,46 @@ impl Board {
 						} else if from.x() == 7 {
 							self.set_can_castle(false, false);
 						}
-					},
+					}
 					PieceKind::King => {
 						self.set_can_castle(false, true);
 						self.set_can_castle(false, false);
-					},
+					}
 					PieceKind::Pawn => {
 						// check if it is a double move
-						if from.x() == to.x() &&
-							from.y().abs_diff(to.y()) == 2
+						if from.x() == to.x() && from.y().abs_diff(to.y()) == 2
 						{
 							new_en_passant = Some(to);
 						}
-					},
+					}
 					_ => {}
 				}
 
 				// now do the move
 				let new_piece = match promotion {
-					Some(kind) => Piece { kind, side: self.next_move },
-					None => self.piece_at(from).unwrap()
+					Some(kind) => Piece {
+						kind,
+						side: self.next_move,
+					},
+					None => self.piece_at(from).unwrap(),
 				};
 
 				*self.piece_at_mut(from) = None;
 				self.piece_at_mut(to).replace(new_piece);
-			},
+			}
 			PieceMove::EnPassant { from, to } => {
 				let square = self.en_passant.take().unwrap();
 				*self.piece_at_mut(square) = None;
 				let pawn = self.piece_at(from).unwrap();
 				*self.piece_at_mut(from) = None;
 				self.piece_at_mut(to).replace(pawn);
-			},
-			PieceMove::Castle { from_king, to_king, from_rook, to_rook } => {
+			}
+			PieceMove::Castle {
+				from_king,
+				to_king,
+				from_rook,
+				to_rook,
+			} => {
 				let king = self.piece_at(from_king).unwrap();
 				let rook = self.piece_at(from_rook).unwrap();
 				*self.piece_at_mut(from_king) = None;
@@ -512,7 +518,7 @@ impl Board {
 	pub fn apply_duck_move(
 		&mut self,
 		square: Square,
-		duck_square: Option<Square>
+		duck_square: Option<Square>,
 	) {
 		assert!(self.moved_piece);
 
@@ -530,7 +536,7 @@ impl Board {
 
 		self.piece_at_mut(square).replace(Piece {
 			kind: PieceKind::Duck,
-			side: next_move
+			side: next_move,
 		});
 
 		self.moved_piece = false;
@@ -542,7 +548,7 @@ impl Board {
 #[serde(rename_all = "camelCase")]
 pub struct Piece {
 	pub kind: PieceKind,
-	pub side: Side
+	pub side: Side,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -553,7 +559,7 @@ pub enum PieceKind {
 	King,
 	Queen,
 	Pawn,
-	Duck
+	Duck,
 }
 
 impl PieceKind {
@@ -567,7 +573,7 @@ impl PieceKind {
 			Self::King => Direction::ALL_NO_KNIGHTS,
 			Self::Queen => Direction::ALL_NO_KNIGHTS,
 			Self::Pawn => &[],
-			Self::Duck => &[]
+			Self::Duck => &[],
 		}
 	}
 
@@ -581,20 +587,20 @@ impl PieceKind {
 pub struct CanCastle {
 	// long, short
 	pub white: (bool, bool),
-	pub black: (bool, bool)
+	pub black: (bool, bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Side {
 	White,
-	Black
+	Black,
 }
 
 impl Side {
 	pub fn other(&self) -> Self {
 		match self {
 			Self::White => Self::Black,
-			Self::Black => Self::White
+			Self::Black => Self::White,
 		}
 	}
 
@@ -602,7 +608,7 @@ impl Side {
 	pub fn multi(&self) -> f32 {
 		match self {
 			Self::White => 1f32,
-			Self::Black => -1f32
+			Self::Black => -1f32,
 		}
 	}
 }
@@ -612,7 +618,7 @@ impl Side {
 pub struct Move {
 	pub piece: PieceMove,
 	pub duck: Square,
-	pub side: Side
+	pub side: Side,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -622,11 +628,11 @@ pub enum PieceMove {
 		from: Square,
 		to: Square,
 		capture: Option<PieceKind>,
-		promotion: Option<PieceKind>
+		promotion: Option<PieceKind>,
 	},
 	EnPassant {
 		from: Square,
-		to: Square
+		to: Square,
 	},
 	Castle {
 		#[serde(rename = "fromKing")]
@@ -636,12 +642,13 @@ pub enum PieceMove {
 		#[serde(rename = "fromRook")]
 		from_rook: Square,
 		#[serde(rename = "toRook")]
-		to_rook: Square
-	}
+		to_rook: Square,
+	},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[rustfmt::skip]
 pub enum Square {
 	A8 = 0, B8, C8, D8, E8, F8, G8, H8,
 	A7, B7, C7, D7, E7, F7, G7, H7,
@@ -687,7 +694,7 @@ impl Square {
 
 		let (x, y) = xy;
 		if x < 0 || x >= 8 || y < 0 || y >= 8 {
-			return None
+			return None;
 		}
 
 		Some(Self::from_xy(x as u8, y as u8))
@@ -703,8 +710,6 @@ impl Square {
 			false
 		}
 	}
-
-
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -724,7 +729,7 @@ pub enum Direction {
 	KnDownLeft,
 	KnLeftDown,
 	KnLeftUp,
-	KnUpLeft
+	KnUpLeft,
 }
 
 impl Direction {
@@ -736,7 +741,7 @@ impl Direction {
 		Self::Down,
 		Self::DownLeft,
 		Self::Left,
-		Self::UpLeft
+		Self::UpLeft,
 	];
 
 	const ALL_KNIGHTS: &'static [Self] = &[
@@ -747,7 +752,7 @@ impl Direction {
 		Self::KnDownLeft,
 		Self::KnLeftDown,
 		Self::KnLeftUp,
-		Self::KnUpLeft
+		Self::KnUpLeft,
 	];
 
 	fn xy_change(&self) -> (i8, i8) {

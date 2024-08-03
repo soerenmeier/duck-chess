@@ -1,7 +1,6 @@
-use std::{env, fs};
-use std::path::Path;
 use std::fmt::Write;
-
+use std::path::Path;
+use std::{env, fs};
 
 fn main() {
 	let out_dir = env::var_os("OUT_DIR").unwrap();
@@ -9,6 +8,7 @@ fn main() {
 	generate_has_neighbor(&out_dir);
 }
 
+#[rustfmt::skip]
 const NEIGHBOR_MATRICES: [(i8, i8); 8] = [
 	(-1, -1), (0, -1), (1, -1),
 	(-1, 0), (1, 0),
@@ -25,9 +25,8 @@ fn generate_has_neighbor(path: impl AsRef<Path>) {
 		let x = i as i8 % 8;
 		let y = i as i8 / 8;
 
-		write!(s,
-			"const fn has_neighbor_{i}(board: BitBoard) -> bool {{\n"
-		).unwrap();
+		write!(s, "const fn has_neighbor_{i}(board: BitBoard) -> bool {{\n")
+			.unwrap();
 
 		let mut exprs = vec![];
 
@@ -36,14 +35,12 @@ fn generate_has_neighbor(path: impl AsRef<Path>) {
 			let y = y + d_y;
 
 			if x < 0 || x >= 8 || y < 0 || y >= 8 {
-				continue
+				continue;
 			}
 
 			let idx = x + y * 8;
 
-			exprs.push(format!(
-				"\tboard.is_set(Square::from_u8({idx})) "
-			));
+			exprs.push(format!("\tboard.is_set(Square::from_u8({idx})) "));
 		}
 
 		let exprs: String = exprs.join("||\n");
@@ -57,7 +54,6 @@ fn generate_has_neighbor(path: impl AsRef<Path>) {
 		write!(s, "\thas_neighbor_{i},\n").unwrap();
 	}
 	write!(s, "];\n").unwrap();
-
 
 	fs::write(path.as_ref().join("has_neighbor.rs"), s).unwrap();
 }

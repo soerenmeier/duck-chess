@@ -9,8 +9,6 @@ pub mod neighbor {
 
 	#[inline]
 	pub fn has_neighbor(square: Square, board: BitBoard) -> bool {
-		unsafe {
-			NEIGHBOR_LOOKUP.get_unchecked(square as u8 as usize)(board)
-		}
+		unsafe { NEIGHBOR_LOOKUP.get_unchecked(square as u8 as usize)(board) }
 	}
 }

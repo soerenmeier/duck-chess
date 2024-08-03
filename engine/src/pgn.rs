@@ -1,7 +1,6 @@
 use crate::types::{PieceKind, Square};
 
-use byte_parser::{StrParser, ParseIterator};
-
+use byte_parser::{ParseIterator, StrParser};
 
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -9,13 +8,13 @@ pub enum Error {
 	MismatchNumber,
 	IncorrectMove,
 	ExpectedSquare,
-	UnknownPiece(u8)
+	UnknownPiece(u8),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PgnMove {
 	pub piece: PgnPieceMove,
-	pub duck: Square
+	pub duck: Square,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,11 +23,11 @@ pub enum PgnPieceMove {
 		piece: PieceKind,
 		from: Option<Square>,
 		to: Square,
-		capture: bool
+		capture: bool,
 	},
 	Castle {
-		long: bool
-	}
+		long: bool,
+	},
 }
 
 pub fn parse_moves(s: &str) -> Result<Vec<PgnMove>, Error> {
@@ -39,19 +38,18 @@ pub fn parse_moves(s: &str) -> Result<Vec<PgnMove>, Error> {
 		parser.consume_while_byte_fn(u8::is_ascii_whitespace);
 
 		if parser.peek().is_none() {
-			break
+			break;
 		}
 
 		let _ = parse_number(&mut parser)?;
 
 		for _ in 0..2 {
-
 			parser.consume_while_byte_fn(u8::is_ascii_whitespace);
 
 			if let Some(mov) = parse_move(&mut parser)? {
 				moves.push(mov);
 			} else {
-				break 'main_loop
+				break 'main_loop;
 			}
 		}
 	}
@@ -60,7 +58,9 @@ pub fn parse_moves(s: &str) -> Result<Vec<PgnMove>, Error> {
 }
 
 fn parse_number<'a, I>(iter: &mut I) -> Result<usize, Error>
-where I: ParseIterator<'a> {
+where
+	I: ParseIterator<'a>,
+{
 	let mut iter = iter.record();
 
 	// consume digits
@@ -70,28 +70,29 @@ where I: ParseIterator<'a> {
 
 	let digits = iter.to_str();
 
-	iter.expect_byte(b'.')
-		.map_err(|_| Error::NumberExpected)?;
+	iter.expect_byte(b'.').map_err(|_| Error::NumberExpected)?;
 
-	digits.parse()
-		.map_err(|_| Error::NumberExpected)
+	digits.parse().map_err(|_| Error::NumberExpected)
 }
 
 /// possible
 /// O-O-O O-O hg1 Nf1 Bf1 Rhg1 R5a3 fxg3
 fn parse_move<'a, I>(iter: &mut I) -> Result<Option<PgnMove>, Error>
-where I: ParseIterator<'a> {
-	let move_str = iter.record()
+where
+	I: ParseIterator<'a>,
+{
+	let move_str = iter
+		.record()
 		.consume_while_byte_fn(|b| b.is_ascii_alphanumeric() || *b == b'-')
 		.to_str();
 
 	if matches!(move_str, "0-0" | "1-0" | "0-1") {
-		return Ok(None)
+		return Ok(None);
 	}
 
 	let bytes = move_str.as_bytes();
 	if bytes.len() < 4 {
-		return Err(Error::IncorrectMove)
+		return Err(Error::IncorrectMove);
 	}
 	let (mut bytes, duck_bytes) = bytes.split_at(bytes.len() - 2);
 	let duck = parse_square(duck_bytes[0], duck_bytes[1])?;
@@ -99,13 +100,13 @@ where I: ParseIterator<'a> {
 	if bytes == b"O-O" {
 		return Ok(Some(PgnMove {
 			piece: PgnPieceMove::Castle { long: false },
-			duck
-		}))
+			duck,
+		}));
 	} else if bytes == b"O-O-O" {
 		return Ok(Some(PgnMove {
 			piece: PgnPieceMove::Castle { long: true },
-			duck
-		}))
+			duck,
+		}));
 	}
 
 	let mut piece = PieceKind::Pawn;
@@ -116,7 +117,7 @@ where I: ParseIterator<'a> {
 			b'B' => PieceKind::Bishop,
 			b'K' => PieceKind::King,
 			b'Q' => PieceKind::Queen,
-			l => return Err(Error::UnknownPiece(l))
+			l => return Err(Error::UnknownPiece(l)),
 		};
 
 		bytes = &bytes[1..];
@@ -138,15 +139,20 @@ where I: ParseIterator<'a> {
 		} else if byte.is_ascii_alphabetic() && byte.is_ascii_lowercase() {
 			from = Some(parse_square(byte, square_bytes[1])?);
 		} else {
-			return Err(Error::IncorrectMove)
+			return Err(Error::IncorrectMove);
 		}
 	} else if !bytes.is_empty() {
-		return Err(Error::IncorrectMove)
+		return Err(Error::IncorrectMove);
 	}
 
 	Ok(Some(PgnMove {
-		piece: PgnPieceMove::Piece { piece, from, to, capture },
-		duck
+		piece: PgnPieceMove::Piece {
+			piece,
+			from,
+			to,
+			capture,
+		},
+		duck,
 	}))
 }
 
@@ -157,7 +163,7 @@ fn parse_square(letter: u8, number: u8) -> Result<Square, Error> {
 
 	let letter_number = letter - b'a';
 	if letter_number >= 8 || number >= 8 {
-		return Err(Error::ExpectedSquare)
+		return Err(Error::ExpectedSquare);
 	}
 
 	// reverse number since the chess coordinates system has zero at the bottom
@@ -166,7 +172,6 @@ fn parse_square(letter: u8, number: u8) -> Result<Square, Error> {
 	Ok(Square::from_xy(letter_number, number))
 }
 
-
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -174,12 +179,15 @@ mod tests {
 	/// O-O-O O-O hg1 Nf1 Bf1 Rhg1 R5a3 fxg3
 	#[test]
 	fn test_parsing() {
-		let moves = parse_moves("
+		let moves = parse_moves(
+			"
 			1. e2e4 d7d6
 			2. Nb1c3 g7g6
 			3. Ng1f3 Bf8g7
 			4. Bf1e2 c7c6
-		").unwrap();
+		",
+		)
+		.unwrap();
 
 		let correct_moves = vec![
 			PgnMove {
@@ -187,28 +195,28 @@ mod tests {
 					piece: PieceKind::Pawn,
 					from: None,
 					to: Square::E2,
-					capture: false
+					capture: false,
 				},
-				duck: Square::E4
+				duck: Square::E4,
 			},
 			PgnMove {
 				piece: PgnPieceMove::Piece {
 					piece: PieceKind::Pawn,
 					from: None,
 					to: Square::D7,
-					capture: false
+					capture: false,
 				},
-				duck: Square::D6
+				duck: Square::D6,
 			},
 			PgnMove {
 				piece: PgnPieceMove::Piece {
 					piece: PieceKind::Knight,
 					from: None,
 					to: Square::B1,
-					capture: false
+					capture: false,
 				},
-				duck: Square::C3
-			}
+				duck: Square::C3,
+			},
 		];
 
 		assert_eq!(&moves[..correct_moves.len()], &correct_moves);

@@ -2,7 +2,6 @@ use engine::logic::ComputedBoard;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
-
 fn fast_benchmark(c: &mut Criterion) {
 	let board = ComputedBoard::new();
 

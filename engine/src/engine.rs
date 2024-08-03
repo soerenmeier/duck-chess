@@ -5,8 +5,6 @@ use crate::types::{Board, PieceKind, Square};
 // we have threads that take work
 // when putting the value into the pool you get a receipt (a token)
 
-
-
 /// returns a score of a board + for white - for black
 #[cfg_attr(feature = "flamegraph", inline(never))]
 pub fn evaluate_single_board(board: &Board) -> f32 {
@@ -25,25 +23,22 @@ pub fn evaluate_single_board(board: &Board) -> f32 {
 fn piece_kind_to_point(piece: PieceKind) -> f32 {
 	match piece {
 		PieceKind::Rook => 5f32,
-		PieceKind::Knight |
-		PieceKind::Bishop => 3f32,
+		PieceKind::Knight | PieceKind::Bishop => 3f32,
 		PieceKind::King => 99f32,
 		PieceKind::Queen => 9f32,
 		PieceKind::Pawn => 1f32,
-		PieceKind::Duck => 0f32
+		PieceKind::Duck => 0f32,
 	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BitBoard {
-	board: u64
+	board: u64,
 }
 
 impl BitBoard {
 	pub fn new() -> Self {
-		Self {
-			board: 0
-		}
+		Self { board: 0 }
 	}
 
 	#[inline]
@@ -63,8 +58,6 @@ impl BitBoard {
 
 	#[inline]
 	pub const fn invert(&self) -> Self {
-		Self {
-			board: !self.board
-		}
+		Self { board: !self.board }
 	}
 }

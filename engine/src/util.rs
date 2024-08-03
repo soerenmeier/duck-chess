@@ -2,15 +2,14 @@ use std::slice::Iter;
 
 use arrayvec::ArrayVec;
 
-
 pub struct HighestScoreArray<T, const L: usize> {
-	inner: ArrayVec<(f32, T), L>
+	inner: ArrayVec<(f32, T), L>,
 }
 
 impl<T, const L: usize> HighestScoreArray<T, L> {
 	pub fn new() -> Self {
 		Self {
-			inner: ArrayVec::new()
+			inner: ArrayVec::new(),
 		}
 	}
 
@@ -27,19 +26,19 @@ impl<T, const L: usize> HighestScoreArray<T, L> {
 	}
 
 	pub fn should_insert(&self, score: f32) -> bool {
-		score > self.lowest_score().unwrap_or(f32::MIN) ||
-		!self.inner.is_full()
+		score > self.lowest_score().unwrap_or(f32::MIN) || !self.inner.is_full()
 	}
 
 	fn sort(&mut self) {
-		self.inner.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
+		self.inner
+			.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
 	}
 
 	/// ## Panics
 	/// if the score cannot be compared
 	pub fn insert(&mut self, score: f32, val: T) {
 		if !self.should_insert(score) {
-			return
+			return;
 		}
 
 		if self.inner.is_full() {
