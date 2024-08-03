@@ -20,8 +20,8 @@ impl ComputedBoard {
 
 	fn find_duck(board: &Board) -> Option<Square> {
 		iter_board!(board.board)
-			.find(|(square, p)| matches!(p, Some(p) if p.kind.is_duck()))
-			.map(|(sq, p)| sq)
+			.find(|(_square, p)| matches!(p, Some(p) if p.kind.is_duck()))
+			.map(|(sq, _p)| sq)
 	}
 
 	pub fn into_board(self) -> Board {

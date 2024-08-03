@@ -1,5 +1,5 @@
 [package]
-name = "duck-chess"
+name = "server"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,9 +10,13 @@ lto = true
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-fire = { package = "fire-http", version = "0.3", features = ["fs", "json", "ws"] }
+fire = { package = "fire-http", version = "0.3", features = [
+	"fs",
+	"json",
+	"ws",
+] }
 fire-api = { package = "fire-http-api", version = "0.2", features = ["stream"] }
-engine = { version = "0.1", path = "./../engine" }
+engine = { package = "duck-chess", version = "0.1", path = "./../engine" }
 clap = { version = "4.0", features = ["derive"] }
 
 [build-dependencies]

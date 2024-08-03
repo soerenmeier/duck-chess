@@ -1,7 +1,12 @@
 [package]
-name = "engine"
+name = "duck-chess"
+description = "A library to for duck chess"
 version = "0.1.0"
+authors = ["Sören Meier <info@soerenmeier.ch>"]
+repository = "https://github.com/soerenmeier/duck-chess"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.74"
 
 [features]
 flamegraph = []

@@ -1,4 +1,4 @@
-use crate::types::{Piece, PieceKind, Square};
+use crate::types::{PieceKind, Square};
 
 use byte_parser::{StrParser, ParseIterator};
 
