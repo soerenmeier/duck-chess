@@ -1,6 +1,6 @@
 use crate::engine::evaluate_single_board;
 use crate::pgn::{PgnMove, PgnPieceMove};
-use crate::types::{Board, Move, PieceMove, Side, Square};
+use crate::types::{Board, Move, PieceKind, PieceMove, Side, Square};
 use crate::util::HighestScoreArray;
 
 #[derive(Debug, Clone)]
@@ -66,8 +66,12 @@ impl ComputedBoard {
 	// 	}
 	// }
 
-	pub fn next_move_side(&self) -> Side {
+	pub fn next_move_side(&self) -> Option<Side> {
 		self.inner.next_move
+	}
+
+	pub fn winner(&self) -> Option<Side> {
+		self.inner.winner
 	}
 
 	pub fn moved_piece(&self) -> bool {
@@ -79,7 +83,7 @@ impl ComputedBoard {
 	pub fn available_piece_moves(&self, list: &mut Vec<PieceMove>) {
 		assert!(list.is_empty());
 
-		let my_side = self.inner.next_move;
+		let my_side = self.inner.next_move.unwrap();
 
 		for (i, piece) in self.inner.board.iter().enumerate() {
 			let Some(piece) = piece else { continue };
@@ -100,6 +104,8 @@ impl ComputedBoard {
 
 	/// The move must be valid
 	pub fn convert_pgn_move(&self, mv: PgnMove) -> Option<Move> {
+		let my_side = self.inner.next_move.unwrap();
+
 		let (piece, from, to, capture) = match mv.piece {
 			PgnPieceMove::Piece {
 				piece,
@@ -110,7 +116,7 @@ impl ComputedBoard {
 			PgnPieceMove::Castle { long } => {
 				// we can calculate this without a lookup
 				// from king, to king ...
-				let (fk, tk, fr, tr, y) = match self.inner.next_move {
+				let (fk, tk, fr, tr, y) = match my_side {
 					Side::White if long => (4, 2, 0, 3, 7),
 					Side::White => (4, 6, 7, 5, 7),
 					Side::Black if long => (4, 2, 0, 3, 0),
@@ -125,15 +131,13 @@ impl ComputedBoard {
 						to_rook: Square::from_xy(tr, y),
 					},
 					duck: mv.duck,
-					side: self.inner.next_move,
+					side: my_side,
 				});
 			}
 		};
 
 		let mut list = vec![];
 		// todo sometimes a lookup is probably not always necessary
-
-		let my_side = self.inner.next_move;
 
 		for (i, p) in self.inner.board.iter().enumerate() {
 			let Some(p) = p else { continue };
@@ -172,12 +176,72 @@ impl ComputedBoard {
 				return Some(Move {
 					piece: cand_mv,
 					duck: mv.duck,
-					side: self.inner.next_move,
+					side: my_side,
 				});
 			}
 		}
 
 		None
+	}
+
+	/// The move must be valid
+	/// And should be the next move of this board (not already applied)
+	pub fn convert_move_to_pgn(&self, mv: Move) -> PgnMove {
+		match mv.piece {
+			PieceMove::Castle {
+				from_king, to_king, ..
+			} => {
+				// todo we need to determine if it's long or short
+				let long = from_king.x() == 4 && to_king.x() == 2;
+
+				return PgnMove {
+					piece: PgnPieceMove::Castle { long },
+					duck: mv.duck,
+				};
+			}
+			_ => {}
+		}
+		// let's first get what we need
+		let (piece, from, to, capture) = match mv.piece {
+			PieceMove::Piece {
+				piece,
+				from,
+				to,
+				capture,
+				..
+			} => (piece, from, to, capture.is_some()),
+			PieceMove::EnPassant { from, to } => {
+				(PieceKind::Pawn, from, to, true)
+			}
+			PieceMove::Castle { .. } => unreachable!(),
+		};
+
+		// now we need to find out if another piece can move to the same square
+		let mut piece_moves = vec![];
+		self.available_piece_moves(&mut piece_moves);
+
+		let ambiguous_square = piece_moves.iter().any(|mov| match mov {
+			PieceMove::Piece {
+				piece: p_piece,
+				from: p_from,
+				to: p_to,
+				..
+			} => p_piece == &piece && p_to == &to && p_from != &from,
+			PieceMove::EnPassant { .. } => false,
+			PieceMove::Castle { .. } => false,
+		});
+
+		let from = ambiguous_square.then_some(from);
+
+		PgnMove {
+			piece: PgnPieceMove::Piece {
+				piece,
+				from,
+				to,
+				capture,
+			},
+			duck: mv.duck,
+		}
 	}
 
 	pub fn apply_piece_move(&mut self, piece_move: PieceMove) {
@@ -206,7 +270,7 @@ impl ComputedBoard {
 	) -> HighestScoreArray<Move, 3> {
 		let mut moves = HighestScoreArray::new();
 
-		let next_side = self.inner.next_move;
+		let next_side = self.inner.next_move.unwrap();
 
 		let mut piece_moves = Vec::with_capacity(128);
 		self.available_piece_moves(&mut piece_moves);
@@ -215,7 +279,8 @@ impl ComputedBoard {
 			duck_moves.clear();
 
 			let mut board = self.clone();
-			let side = board.inner.next_move;
+			// todo: this might now be broken because of the score
+			let side = board.inner.next_move.unwrap();
 			board.apply_piece_move(piece_move);
 			board.inner.reasonable_duck_squares(&mut duck_moves);
 			for square in duck_moves.iter() {
@@ -248,7 +313,7 @@ impl ComputedBoard {
 					Move {
 						piece: piece_move,
 						duck: *square,
-						side: side,
+						side,
 					},
 				);
 
