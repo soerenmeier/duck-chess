@@ -1,7 +1,10 @@
 use crate::engine::BitBoard;
 use crate::lookup::neighbor::has_neighbor;
 
-use std::mem;
+use std::{
+	fmt::{self, Write},
+	mem,
+};
 
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
@@ -634,6 +637,7 @@ pub struct Move {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all_fields = "camelCase")]
 pub enum PieceMove {
 	Piece {
 		piece: PieceKind,
@@ -647,13 +651,9 @@ pub enum PieceMove {
 		to: Square,
 	},
 	Castle {
-		#[serde(rename = "fromKing")]
 		from_king: Square,
-		#[serde(rename = "toKing")]
 		to_king: Square,
-		#[serde(rename = "fromRook")]
 		from_rook: Square,
-		#[serde(rename = "toRook")]
 		to_rook: Square,
 	},
 }
@@ -689,6 +689,11 @@ impl Square {
 		*self as u8 % 8
 	}
 
+	// returns the lower case letter of the x coordinate
+	pub fn x_letter(&self) -> u8 {
+		self.x() + b'a'
+	}
+
 	pub fn y(&self) -> u8 {
 		*self as u8 / 8
 	}
@@ -721,6 +726,12 @@ impl Square {
 		} else {
 			false
 		}
+	}
+}
+
+impl fmt::Display for Square {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "{}{}", self.x_letter() as char, self.y() + 1)
 	}
 }
 

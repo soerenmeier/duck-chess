@@ -188,6 +188,66 @@ impl ComputedBoard {
 		None
 	}
 
+	/// The move must be valid
+	/// And should be the next move of this board (not already applied)
+	pub fn convert_move_to_pgn(&self, mv: Move) -> PgnMove {
+		match mv.piece {
+			PieceMove::Castle {
+				from_king, to_king, ..
+			} => {
+				// todo we need to determine if it's long or short
+				let long = from_king.x() == 4 && to_king.x() == 2;
+
+				return PgnMove {
+					piece: PgnPieceMove::Castle { long },
+					duck: mv.duck,
+				};
+			}
+			_ => {}
+		}
+		// let's first get what we need
+		let (piece, from, to, capture) = match mv.piece {
+			PieceMove::Piece {
+				piece,
+				from,
+				to,
+				capture,
+				..
+			} => (piece, from, to, capture.is_some()),
+			PieceMove::EnPassant { from, to } => {
+				(PieceKind::Pawn, from, to, true)
+			}
+			PieceMove::Castle { .. } => unreachable!(),
+		};
+
+		// now we need to find out if another piece can move to the same square
+		let mut piece_moves = vec![];
+		self.available_piece_moves(&mut piece_moves);
+
+		let ambiguous_square = piece_moves.iter().any(|mov| match mov {
+			PieceMove::Piece {
+				piece: p_piece,
+				from: p_from,
+				to: p_to,
+				..
+			} => p_piece == &piece && p_to == &to && p_from != &from,
+			PieceMove::EnPassant { .. } => false,
+			PieceMove::Castle { .. } => false,
+		});
+
+		let from = ambiguous_square.then_some(from);
+
+		PgnMove {
+			piece: PgnPieceMove::Piece {
+				piece,
+				from,
+				to,
+				capture,
+			},
+			duck: mv.duck,
+		}
+	}
+
 	pub fn apply_piece_move(&mut self, piece_move: PieceMove) {
 		self.inner.apply_piece_move(piece_move);
 	}

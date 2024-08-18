@@ -1,3 +1,5 @@
+use std::fmt::{self, Write};
+
 use crate::types::{PieceKind, Square};
 
 use byte_parser::{ParseIterator, StrParser};
@@ -170,6 +172,83 @@ fn parse_square(letter: u8, number: u8) -> Result<Square, Error> {
 	let number = 7 - number;
 
 	Ok(Square::from_xy(letter_number, number))
+}
+
+pub struct MovesFormatter<'a>(pub &'a [PgnMove]);
+
+impl fmt::Display for MovesFormatter<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		for (i, moves) in self.0.chunks(2).enumerate() {
+			if i > 0 {
+				write!(f, " ")?;
+			}
+
+			write!(f, "{}.", i + 1)?;
+
+			for mov in moves {
+				write!(f, " {}", mov)?;
+			}
+		}
+
+		Ok(())
+	}
+}
+
+impl fmt::Display for PgnPieceMove {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			Self::Piece {
+				piece,
+				from,
+				to,
+				capture,
+			} => {
+				// piece
+				match piece {
+					PieceKind::Rook => f.write_char('R')?,
+					PieceKind::Knight => f.write_char('N')?,
+					PieceKind::Bishop => f.write_char('B')?,
+					PieceKind::Queen => f.write_char('Q')?,
+					PieceKind::King => f.write_char('K')?,
+					_ => {}
+				}
+
+				if let Some(from) = from {
+					if from.x() != to.x() {
+						f.write_char(from.x_letter() as char)?;
+					}
+
+					if from.y() != to.y() {
+						write!(f, "{}", from.y() + 1)?;
+					}
+				}
+
+				if *capture {
+					f.write_char('x')?;
+				}
+
+				write!(f, "{}", to)
+			}
+			Self::Castle { long } => {
+				if *long {
+					f.write_str("O-O-O")
+				} else {
+					f.write_str("O-O")
+				}
+			}
+		}
+	}
+}
+
+impl fmt::Display for PgnMove {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.piece.fmt(f)?;
+		if let Some(duck) = self.duck {
+			duck.fmt(f)?;
+		}
+
+		Ok(())
+	}
 }
 
 #[cfg(test)]
