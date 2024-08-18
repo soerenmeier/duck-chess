@@ -95,7 +95,9 @@ impl ComputedBoard {
 	}
 
 	/// The move must be valid
-	pub fn convert_pgn_move(&self, mv: PgnMove) -> Move {
+	pub fn convert_pgn_move(&self, mv: PgnMove) -> Option<Move> {
+		let my_side = self.inner.next_move.unwrap();
+
 		let (piece, from, to, capture) = match mv.piece {
 			PgnPieceMove::Piece {
 				piece,
@@ -106,14 +108,14 @@ impl ComputedBoard {
 			PgnPieceMove::Castle { long } => {
 				// we can calculate this without a lookup
 				// from king, to king ...
-				let (fk, tk, fr, tr, y) = match self.inner.next_move {
+				let (fk, tk, fr, tr, y) = match my_side {
 					Side::White if long => (4, 2, 0, 3, 7),
 					Side::White => (4, 6, 7, 5, 7),
 					Side::Black if long => (4, 2, 0, 3, 0),
 					Side::Black => (4, 6, 7, 5, 0),
 				};
 
-				return Move {
+				return Some(Move {
 					piece: PieceMove::Castle {
 						from_king: Square::from_xy(fk, y),
 						to_king: Square::from_xy(tk, y),
@@ -121,15 +123,13 @@ impl ComputedBoard {
 						to_rook: Square::from_xy(tr, y),
 					},
 					duck: mv.duck,
-					side: self.inner.next_move,
-				};
+					side: my_side,
+				});
 			}
 		};
 
 		let mut list = vec![];
 		// todo sometimes a lookup is probably not always necessary
-
-		let my_side = self.inner.next_move;
 
 		for (i, p) in self.inner.board.iter().enumerate() {
 			let Some(p) = p else { continue };
@@ -165,15 +165,15 @@ impl ComputedBoard {
 
 			if mv_to == to {
 				// found the move
-				return Move {
+				return Some(Move {
 					piece: cand_mv,
 					duck: mv.duck,
-					side: self.inner.next_move,
-				};
+					side: my_side,
+				});
 			}
 		}
 
-		panic!("no move found")
+		None
 	}
 
 	pub fn apply_piece_move(&mut self, piece_move: PieceMove) {
