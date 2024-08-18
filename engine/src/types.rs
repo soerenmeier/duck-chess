@@ -15,10 +15,11 @@ pub struct Board {
 	pub can_castle: CanCastle,
 	// if the last move was a pawn with two pushes store that position here
 	pub en_passant: Option<Square>,
-	pub next_move: Side,
+	pub next_move: Option<Side>,
 	// if this is true the duck should be moved
 	// and then the side should change
 	pub moved_piece: bool,
+	pub winner: Option<Side>,
 }
 
 // Board
@@ -54,8 +55,9 @@ impl Board {
 				black: (true, true),
 			},
 			en_passant: None,
-			next_move: Side::White,
+			next_move: None,
 			moved_piece: false,
+			winner: None,
 		}
 	}
 
@@ -76,8 +78,9 @@ impl Board {
 			black: (true, true),
 		};
 		self.en_passant = None;
-		self.next_move = Side::White;
+		self.next_move = Some(Side::White);
 		self.moved_piece = false;
+		self.winner = None;
 	}
 
 	pub fn piece_at(&self, square: Square) -> Option<Piece> {
@@ -347,6 +350,7 @@ impl Board {
 		list: &mut Vec<PieceMove>,
 	) {
 		assert!(!self.moved_piece);
+		assert!(self.next_move.is_some());
 
 		match piece {
 			PieceKind::Rook | PieceKind::Bishop | PieceKind::Queen => {
@@ -392,7 +396,7 @@ impl Board {
 		assert!(self.moved_piece);
 		assert!(list.is_empty());
 
-		let oponnent = self.next_move.other();
+		let oponnent = self.next_move.unwrap().other();
 		let mut oponnent_pieces = BitBoard::new();
 
 		// gather data
@@ -416,8 +420,9 @@ impl Board {
 		}
 	}
 
+	// set can castle for the correct side
 	pub fn set_can_castle(&mut self, can_castle: bool, long: bool) {
-		match self.next_move {
+		match self.next_move.unwrap() {
 			Side::White if long => {
 				self.can_castle.white.0 = can_castle;
 			}
@@ -437,6 +442,7 @@ impl Board {
 	#[cfg_attr(feature = "flamegraph", inline(never))]
 	pub fn apply_piece_move(&mut self, mv: PieceMove) {
 		assert!(!self.moved_piece);
+		let side = self.next_move.unwrap();
 
 		let mut new_en_passant = None;
 
@@ -474,14 +480,19 @@ impl Board {
 
 				// now do the move
 				let new_piece = match promotion {
-					Some(kind) => Piece {
-						kind,
-						side: self.next_move,
-					},
+					Some(kind) => Piece { kind, side },
 					None => self.piece_at(from).unwrap(),
 				};
 
 				*self.piece_at_mut(from) = None;
+
+				match self.piece_at(to).map(|p| p.kind) {
+					Some(PieceKind::King) => {
+						self.winner = Some(side);
+						self.next_move = None;
+					}
+					_ => {}
+				}
 				self.piece_at_mut(to).replace(new_piece);
 			}
 			PieceMove::EnPassant { from, to } => {
@@ -521,6 +532,7 @@ impl Board {
 		duck_square: Option<Square>,
 	) {
 		assert!(self.moved_piece);
+		let next_move = self.next_move.unwrap();
 
 		// remove the duck if it exists
 		// for piece in self.board.iter_mut() {
@@ -532,15 +544,13 @@ impl Board {
 			*self.piece_at_mut(duck_square) = None;
 		}
 
-		let next_move = self.next_move;
-
 		self.piece_at_mut(square).replace(Piece {
 			kind: PieceKind::Duck,
 			side: next_move,
 		});
 
 		self.moved_piece = false;
-		self.next_move = self.next_move.other();
+		self.next_move = Some(next_move.other());
 	}
 }
 
@@ -617,7 +627,9 @@ impl Side {
 #[serde(rename_all = "camelCase")]
 pub struct Move {
 	pub piece: PieceMove,
-	pub duck: Square,
+	// A move is allowed to have no duck, this typically only happens
+	// in a winning move but who knows
+	pub duck: Option<Square>,
 	pub side: Side,
 }
 

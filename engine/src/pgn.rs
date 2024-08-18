@@ -14,7 +14,7 @@ pub enum Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PgnMove {
 	pub piece: PgnPieceMove,
-	pub duck: Square,
+	pub duck: Option<Square>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,12 +100,12 @@ where
 	if bytes == b"O-O" {
 		return Ok(Some(PgnMove {
 			piece: PgnPieceMove::Castle { long: false },
-			duck,
+			duck: Some(duck),
 		}));
 	} else if bytes == b"O-O-O" {
 		return Ok(Some(PgnMove {
 			piece: PgnPieceMove::Castle { long: true },
-			duck,
+			duck: Some(duck),
 		}));
 	}
 
@@ -152,7 +152,7 @@ where
 			to,
 			capture,
 		},
-		duck,
+		duck: Some(duck),
 	}))
 }
 
@@ -197,7 +197,7 @@ mod tests {
 					to: Square::E2,
 					capture: false,
 				},
-				duck: Square::E4,
+				duck: Some(Square::E4),
 			},
 			PgnMove {
 				piece: PgnPieceMove::Piece {
@@ -206,7 +206,7 @@ mod tests {
 					to: Square::D7,
 					capture: false,
 				},
-				duck: Square::D6,
+				duck: Some(Square::D6),
 			},
 			PgnMove {
 				piece: PgnPieceMove::Piece {
@@ -215,7 +215,7 @@ mod tests {
 					to: Square::B1,
 					capture: false,
 				},
-				duck: Square::C3,
+				duck: Some(Square::C3),
 			},
 		];
 

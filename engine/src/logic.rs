@@ -1,6 +1,6 @@
 use crate::engine::evaluate_single_board;
 use crate::pgn::{PgnMove, PgnPieceMove};
-use crate::types::{Board, Move, PieceMove, Side, Square};
+use crate::types::{Board, Move, PieceKind, PieceMove, Side, Square};
 use crate::util::HighestScoreArray;
 
 #[derive(Debug, Clone)]
@@ -22,6 +22,10 @@ impl ComputedBoard {
 		iter_board!(board.board)
 			.find(|(_square, p)| matches!(p, Some(p) if p.kind.is_duck()))
 			.map(|(sq, _p)| sq)
+	}
+
+	pub fn board(&self) -> &Board {
+		&self.inner
 	}
 
 	pub fn into_board(self) -> Board {
@@ -62,12 +66,20 @@ impl ComputedBoard {
 	// 	}
 	// }
 
-	pub fn next_move_side(&self) -> Side {
+	pub fn next_move_side(&self) -> Option<Side> {
 		self.inner.next_move
+	}
+
+	pub fn winner(&self) -> Option<Side> {
+		self.inner.winner
 	}
 
 	pub fn moved_piece(&self) -> bool {
 		self.inner.moved_piece
+	}
+
+	pub fn has_ended(&self) -> bool {
+		self.next_move_side().is_none()
 	}
 
 	// does not clear the list
@@ -75,7 +87,7 @@ impl ComputedBoard {
 	pub fn available_piece_moves(&self, list: &mut Vec<PieceMove>) {
 		assert!(list.is_empty());
 
-		let my_side = self.inner.next_move;
+		let my_side = self.inner.next_move.unwrap();
 
 		for (i, piece) in self.inner.board.iter().enumerate() {
 			let Some(piece) = piece else { continue };
@@ -202,7 +214,7 @@ impl ComputedBoard {
 	) -> HighestScoreArray<Move, 3> {
 		let mut moves = HighestScoreArray::new();
 
-		let next_side = self.inner.next_move;
+		let next_side = self.inner.next_move.unwrap();
 
 		let mut piece_moves = Vec::with_capacity(128);
 		self.available_piece_moves(&mut piece_moves);
@@ -211,7 +223,8 @@ impl ComputedBoard {
 			duck_moves.clear();
 
 			let mut board = self.clone();
-			let side = board.inner.next_move;
+			// todo: this might now be broken because of the score
+			let side = board.inner.next_move.unwrap();
 			board.apply_piece_move(piece_move);
 			board.inner.reasonable_duck_squares(&mut duck_moves);
 			for square in duck_moves.iter() {
@@ -243,8 +256,8 @@ impl ComputedBoard {
 					score,
 					Move {
 						piece: piece_move,
-						duck: *square,
-						side: side,
+						duck: Some(*square),
+						side,
 					},
 				);
 
